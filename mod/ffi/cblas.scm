@@ -32,7 +32,7 @@
   (bytevector->pointer (shared-array-root A) (* (shared-array-offset A) typesize)))
 
 ;; Consider http://wiki.call-cc.org/eggref/4/blas#usage
-;; The three levels are thus:
+;; The three levels would be:
 
 ;; 1) ([original library name] ...) ~ (unsafe-xxx! ...) the result of
 ;; pointer->procedure.
@@ -95,3 +95,45 @@
 ; void cblas_cdotc_sub (const int N, const void *X, const int incX, const void *Y, const int incY, void *dotc)
 (define-dot-complex cdotc 'c32 (* 2 (sizeof float)) cblas_cdotc_sub "cblas_cdotc_sub")
 (export cdotc cblas_cdotc_sub)
+
+; @TODO pointer-to-this-value support in the ffi, for old C decls that take double * for complex.
+(define-syntax define-axpy-real
+  (syntax-rules ()
+    ((_ name srfi4-type type cblas-name cblas-name-string)
+     (begin
+       (define cblas-name (pointer->procedure void (dynamic-func cblas-name-string libcblas)
+                                              (list int type '* int '* int)))
+       (define (name a X Y)
+         (check-2-arrays X Y 1 srfi4-type)
+         (cblas-name (array-length X) a
+                     (pointer-to-first X (sizeof type)) (first (shared-array-increments X))
+                     (pointer-to-first Y (sizeof type)) (first (shared-array-increments Y))))))))
+
+; void cblas_daxpy (const int N, const double alpha, const double *X, const int incX, double *Y, const int incY)
+(define-axpy-real daxpy! 'f64 double cblas_daxpy "cblas_daxpy")
+(export cblas_daxpy daxpy!)
+
+; void cblas_saxpy (const int N, const float alpha, const float *X, const int incX, float *Y, const int incY)
+(define-axpy-real saxpy! 'f32 float cblas_saxpy "cblas_saxpy")
+(export cblas_saxpy saxpy!)
+
+(define-syntax define-axpy-complex
+  (syntax-rules ()
+    ((_ name srfi4-type typesize cblas-name cblas-name-string)
+     (begin
+       (define cblas-name (pointer->procedure void (dynamic-func cblas-name-string libcblas)
+                                              (list int '* '* int '* int)))
+       (define (name a X Y)
+         (check-2-arrays X Y 1 srfi4-type)
+         (let ((a (make-typed-array srfi4-type a)))
+           (cblas-name (array-length X) (pointer-to-first a typesize)
+                       (pointer-to-first X typesize) (first (shared-array-increments X))
+                       (pointer-to-first Y typesize) (first (shared-array-increments Y)))))))))
+
+; void cblas_zaxpy (const int N, const void *alpha, const void *X, const int incX, void *Y, const int incY)
+(define-axpy-complex zaxpy! 'c64 (* 2 (sizeof float)) cblas_zaxpy "cblas_zaxpy")
+(export cblas_zaxpy zaxpy!)
+
+; void cblas_caxpy (const int N, const void *alpha, const void *X, const int incX, void *Y, const int incY)
+(define-axpy-complex caxpy! 'c32 (* 2 (sizeof double)) cblas_caxpy "cblas_caxpy")
+(export cblas_caxpy caxpy!)
