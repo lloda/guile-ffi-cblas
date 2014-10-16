@@ -16,6 +16,21 @@
                                    (string-append lpath file-name-separator-string "libcblas")
                                    "libcblas"))))
 
+(define (check-array A rank type)
+  (unless (= rank (array-rank A)) (throw 'bad-rank (array-rank A)))
+  (unless (typed-array? A type) (throw 'bad-type type (array-type A))))
+
+(define (check-2-arrays A B rank type)
+  (check-array A rank type)
+  (check-array B rank type)
+  (unless (= (array-length A) (array-length B))
+    (throw 'bad-sizes (array-length A) (array-length B)))
+  (unless (= 0 (caar (array-shape A)) (caar (array-shape B)))
+    (throw 'bad-base-indices (array-length A) (array-length B))))
+
+(define (pointer-to-first A type)
+  (bytevector->pointer (shared-array-root A) (* (shared-array-offset A) (sizeof type))))
+
 ;; Consider http://wiki.call-cc.org/eggref/4/blas#usage
 ;; The three levels are thus:
 
@@ -36,19 +51,10 @@
                       (list int '* int '* int)))
 
 (define (ddot A B)
-  (unless (typed-array? A 'f64) (throw 'bad-type (array-type A)))
-  (unless (typed-array? B 'f64) (throw 'bad-type (array-type B)))
-  (unless (= 1 (array-rank A)) (throw 'bad-rank (array-rank A)))
-  (unless (= 1 (array-rank B)) (throw 'bad-rank (array-rank B)))
-  (unless (= (array-length A) (array-length B))
-    (throw 'bad-sizes (array-length A) (array-length B)))
-  (unless (= 0 (shared-array-offset A) (shared-array-offset B))
-    (throw 'bad-sizes (array-length A) (array-length B)))
+  (check-2-arrays A B 1 'f64)
   (cblas_ddot (array-length A)
-              (bytevector->pointer (shared-array-root A) (* (shared-array-offset A) (sizeof double)))
-              (first (shared-array-increments A))
-              (bytevector->pointer (shared-array-root B) (* (shared-array-offset B) (sizeof double)))
-              (first (shared-array-increments B))))
+              (pointer-to-first A double) (first (shared-array-increments A))
+              (pointer-to-first B double) (first (shared-array-increments B))))
 
 (export cblas_ddot)
 (export ddot)
