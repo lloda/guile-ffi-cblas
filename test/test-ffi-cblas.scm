@@ -7,7 +7,7 @@
 ; Software Foundation; either version 3 of the License, or (at your option) any
 ; later version.
 
-(import (ffi cblas) (srfi srfi-64) (srfi srfi-1))
+(import (ffi cblas) (srfi srfi-64) (srfi srfi-1) (ice-9 match))
 
 ; Various sorts of arrays.
 
@@ -28,24 +28,29 @@
 
 ; Basic tests.
 
-(define (test-ddot tag make-A make-B)
-  (let ((case-name (format #f "ddot, ~a" tag))
-        (A (make-A 'f64))
-        (B (make-B 'f64)))
+(define (test-dot srfi4-type dot tag make-A make-B)
+  (let ((case-name (format #f "~a, ~a" (procedure-name dot) tag))
+        (A (make-A srfi4-type))
+        (B (make-B srfi4-type)))
     (test-begin case-name)
-    (test-equal (ddot A B) (fold (lambda (a c) (+ (* a a) c)) 0. (iota 10)))
+    (test-equal (dot A B) (fold (lambda (a c) (+ (* a a) c)) 0. (iota 10)))
     (test-end case-name)))
 
-(test-ddot "compact-compact" make-A-compact make-A-compact)
-(test-ddot "compact-compact" make-A-compact make-A-compact)
-(test-ddot "compact-strided" make-A-compact make-A-strided)
-(test-ddot "compact-offset" make-A-compact make-A-offset)
-(test-ddot "strided-compact" make-A-strided make-A-compact)
-(test-ddot "strided-strided" make-A-strided make-A-strided)
-(test-ddot "strided-offset" make-A-strided make-A-offset)
-(test-ddot "offset-compact" make-A-offset make-A-compact)
-(test-ddot "offset-strided" make-A-offset make-A-strided)
-(test-ddot "offset-offset" make-A-offset make-A-offset)
+(map
+ (match-lambda
+     ((srfi4-type dot)
+      (test-dot srfi4-type dot "compact-compact" make-A-compact make-A-compact)
+      (test-dot srfi4-type dot "compact-compact" make-A-compact make-A-compact)
+      (test-dot srfi4-type dot "compact-strided" make-A-compact make-A-strided)
+      (test-dot srfi4-type dot "compact-offset" make-A-compact make-A-offset)
+      (test-dot srfi4-type dot "strided-compact" make-A-strided make-A-compact)
+      (test-dot srfi4-type dot "strided-strided" make-A-strided make-A-strided)
+      (test-dot srfi4-type dot "strided-offset" make-A-strided make-A-offset)
+      (test-dot srfi4-type dot "offset-compact" make-A-offset make-A-compact)
+      (test-dot srfi4-type dot "offset-strided" make-A-offset make-A-strided)
+      (test-dot srfi4-type dot "offset-offset" make-A-offset make-A-offset)))
+ `((f64 ,ddot)
+   (f32 ,sdot)))
 
 (unless (zero? (test-runner-fail-count (test-runner-current)))
   (error "FAILED test-ffi-cblas.csm"))

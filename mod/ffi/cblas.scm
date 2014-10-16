@@ -46,15 +46,24 @@
 ;; typed arrays.
 
 ; double cblas_ddot (const int N, const double *X, const int incX, const double *Y, const int incY);
-(define cblas_ddot
-  (pointer->procedure double (dynamic-func "cblas_ddot" libcblas)
-                      (list int '* int '* int)))
+(define cblas_ddot (pointer->procedure double (dynamic-func "cblas_ddot" libcblas)
+                                       (list int '* int '* int)))
 
-(define (ddot A B)
-  (check-2-arrays A B 1 'f64)
-  (cblas_ddot (array-length A)
-              (pointer-to-first A double) (first (shared-array-increments A))
-              (pointer-to-first B double) (first (shared-array-increments B))))
+; double cblas_sdot (const int N, const float *X, const int incX, const float *Y, const int incY);
+(define cblas_sdot (pointer->procedure float (dynamic-func "cblas_sdot" libcblas)
+                                       (list int '* int '* int)))
 
-(export cblas_ddot)
-(export ddot)
+(define-syntax define-dot
+  (syntax-rules ()
+    ((_ name srfi4-type type cblas-name)
+     (define (name A B)
+       (check-2-arrays A B 1 srfi4-type)
+       (cblas-name (array-length A)
+                   (pointer-to-first A type) (first (shared-array-increments A))
+                   (pointer-to-first B type) (first (shared-array-increments B)))))))
+
+(define-dot ddot 'f64 double cblas_ddot)
+(export cblas_ddot ddot)
+
+(define-dot sdot 'f32 float cblas_sdot)
+(export cblas_sdot sdot)
