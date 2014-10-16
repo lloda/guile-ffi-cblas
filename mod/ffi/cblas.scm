@@ -28,8 +28,8 @@
   (unless (= 0 (caar (array-shape A)) (caar (array-shape B)))
     (throw 'bad-base-indices (array-length A) (array-length B))))
 
-(define (pointer-to-first A type)
-  (bytevector->pointer (shared-array-root A) (* (shared-array-offset A) (sizeof type))))
+(define (pointer-to-first A typesize)
+  (bytevector->pointer (shared-array-root A) (* (shared-array-offset A) typesize)))
 
 ;; Consider http://wiki.call-cc.org/eggref/4/blas#usage
 ;; The three levels are thus:
@@ -45,25 +45,53 @@
 ;; 3) (name ...) ~ (xxx ...) converts arguments as far as possible. Returns new
 ;; typed arrays.
 
-; double cblas_ddot (const int N, const double *X, const int incX, const double *Y, const int incY);
-(define cblas_ddot (pointer->procedure double (dynamic-func "cblas_ddot" libcblas)
-                                       (list int '* int '* int)))
-
-; double cblas_sdot (const int N, const float *X, const int incX, const float *Y, const int incY);
-(define cblas_sdot (pointer->procedure float (dynamic-func "cblas_sdot" libcblas)
-                                       (list int '* int '* int)))
-
 (define-syntax define-dot
   (syntax-rules ()
-    ((_ name srfi4-type type cblas-name)
-     (define (name A B)
-       (check-2-arrays A B 1 srfi4-type)
-       (cblas-name (array-length A)
-                   (pointer-to-first A type) (first (shared-array-increments A))
-                   (pointer-to-first B type) (first (shared-array-increments B)))))))
+    ((_ name srfi4-type type cblas-name cblas-name-string)
+     (begin
+       (define cblas-name (pointer->procedure type (dynamic-func cblas-name-string libcblas)
+                                              (list int '* int '* int)))
+       (define (name A B)
+         (check-2-arrays A B 1 srfi4-type)
+         (cblas-name (array-length A)
+                     (pointer-to-first A (sizeof type)) (first (shared-array-increments A))
+                     (pointer-to-first B (sizeof type)) (first (shared-array-increments B))))))))
 
-(define-dot ddot 'f64 double cblas_ddot)
+; double cblas_ddot (const int N, const double *X, const int incX, const double *Y, const int incY)
+(define-dot ddot 'f64 double cblas_ddot "cblas_ddot")
 (export cblas_ddot ddot)
 
-(define-dot sdot 'f32 float cblas_sdot)
+; float cblas_sdot (const int N, const float *X, const int incX, const float *Y, const int incY)
+(define-dot sdot 'f32 float cblas_sdot "cblas_sdot")
 (export cblas_sdot sdot)
+
+(define-syntax define-dot-complex
+  (syntax-rules ()
+    ((_ name srfi4-type typesize cblas-name cblas-name-string)
+     (begin
+       (define cblas-name (pointer->procedure void (dynamic-func cblas-name-string libcblas)
+                                              (list int '* int '* int '*)))
+       (define (name A B)
+         (check-2-arrays A B 1 srfi4-type)
+         (let ((C (make-typed-array srfi4-type *unspecified*)))
+           (cblas-name (array-length A)
+                       (pointer-to-first A typesize) (first (shared-array-increments A))
+                       (pointer-to-first B typesize) (first (shared-array-increments B))
+                       (pointer-to-first C typesize))
+           (array-ref C)))))))
+
+; void cblas_zdotu_sub (const int N, const void *X, const int incX, const void *Y, const int incY, void *dotu)
+(define-dot-complex zdotu 'c64 (* 2 (sizeof double)) cblas_zdotu_sub "cblas_zdotu_sub")
+(export zdotu cblas_zdotu_sub)
+
+; void cblas_zdotc_sub (const int N, const void *X, const int incX, const void *Y, const int incY, void *dotc)
+(define-dot-complex zdotc 'c64 (* 2 (sizeof double)) cblas_zdotc_sub "cblas_zdotc_sub")
+(export zdotc cblas_zdotc_sub)
+
+; void cblas_cdotu_sub (const int N, const void *X, const int incX, const void *Y, const int incY, void *dotu)
+(define-dot-complex cdotu 'c32 (* 2 (sizeof float)) cblas_cdotu_sub "cblas_cdotu_sub")
+(export cdotu cblas_cdotu_sub)
+
+; void cblas_cdotc_sub (const int N, const void *X, const int incX, const void *Y, const int incY, void *dotc)
+(define-dot-complex cdotc 'c32 (* 2 (sizeof float)) cblas_cdotc_sub "cblas_cdotc_sub")
+(export cdotc cblas_cdotc_sub)
