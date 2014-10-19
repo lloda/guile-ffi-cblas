@@ -327,3 +327,49 @@
 
 (export cblas_sscal cblas_dscal cblas_cscal cblas_zscal)
 (export sscal! dscal! cscal! zscal!)
+
+; -----------------------------
+; alpha*x_i*y_j + A_{i, j} -> A_{i, j}: sger dger cgeru cgerc zgeru cgerc
+; -----------------------------
+
+(define-syntax define-ger
+  (lambda (x)
+    (syntax-case x ()
+      ((_ name cblas-name srfi4-type)
+       (with-syntax ((cblas-name-string (symbol->string (syntax->datum (syntax cblas-name)))))
+         (syntax
+          (begin
+            (define cblas-name (pointer->procedure
+                                void
+                                (dynamic-func cblas-name-string libcblas)
+                                (list int int int (srfi4-type->type srfi4-type) '* int '* int '* int)))
+            (define (name alpha X Y A)
+              (check-arrays-AXY A Y X srfi4-type)
+              (let-values (((A-lead A-order) (lead-and-order A)))
+                (cblas-name A-order
+                            (dim A 0) (dim A 1) (scalar->cblas-arg srfi4-type alpha)
+                            (pointer-to-first X) (stride X 0)
+                            (pointer-to-first Y) (stride Y 0)
+                            (pointer-to-first A) A-lead))))))))))
+
+; void cblas_sger (const enum CBLAS_ORDER Order, const int M, const int N, const float alpha, const float *X,
+;                  const int incX, const float *Y, const int incY, float *A, const int lda)
+(define-ger sger! cblas_sger 'f32)
+; void cblas_dger (const enum CBLAS_ORDER Order, const int M, const int N, const double alpha, const double *X,
+;                  const int incX, const double *Y, const int incY, double *A, const int lda)
+(define-ger dger! cblas_dger 'f64)
+; void cblas_cgeru (const enum CBLAS_ORDER Order, const int M, const int N, const void *alpha, const void *X,
+;                   const int incX, const void *Y, const int incY, void *A, const int lda)
+(define-ger cgeru! cblas_cgeru 'c32)
+; void cblas_cgerc (const enum CBLAS_ORDER Order, const int M, const int N, const void *alpha, const void *X,
+;                   const int incX, const void *Y, const int incY, void *A, const int lda)
+(define-ger cgerc! cblas_cgerc 'c32)
+; void cblas_zgeru (const enum CBLAS_ORDER Order, const int M, const int N, const void *alpha, const void *X,
+;                   const int incX, const void *Y, const int incY, void *A, const int lda)
+(define-ger zgeru! cblas_zgeru 'c64)
+; void cblas_zgerc (const enum CBLAS_ORDER Order, const int M, const int N, const void *alpha, const void *X,
+;                   const int incX, const void *Y, const int incY, void *A, const int lda)
+(define-ger zgerc! cblas_zgerc 'c64)
+
+(export cblas_sger cblas_dger cblas_cgeru cblas_cgerc cblas_zgeru cblas_zgerc)
+(export sger! dger! cgeru! cgerc! zgeru! zgerc!)
