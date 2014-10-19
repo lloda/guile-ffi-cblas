@@ -191,5 +191,29 @@
    (c64 ,zgemv!)
    (c32 ,cgemv!)))
 
+; ---------------------------------
+; @TODO snrm2, dnrm2, cnrm2, znrm2
+; ---------------------------------
+
+; ---------------------------------
+; @TODO sasum, dasum, casum, zasum
+; ---------------------------------
+
+; ---------------------------------
+; @TODO sscal, dscal, cscal, zscal
+; ---------------------------------
+
+; ---------------------------------
+; @TODO sger, dger, cgeru, cgerc, zgeru, zgerc
+; ---------------------------------
+
+; ---------------------------------
+; @TODO isamax idamax icamax izamax
+; ---------------------------------
+
+; ---------------------------------
+; @TODO sgemm dgemm cgemm zgemm
+; ---------------------------------
+
 (unless (zero? (test-runner-fail-count (test-runner-current)))
   (error "FAILED test-ffi-cblas.csm"))

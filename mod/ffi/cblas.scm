@@ -254,50 +254,7 @@
 (export dgemv! sgemv! zgemv! cgemv!)
 
 ; -----------------------------
-; sqrt(sum_i(conj(X_i)*X_i)): snrm2 dnrm2 cnrm2 znrm2
-; -----------------------------
-
-(define-syntax define-nrm2/asum
-  (lambda (x)
-    (syntax-case x ()
-      ((_ name cblas-name srfi4-type)
-       (with-syntax ((cblas-name-string (symbol->string (syntax->datum (syntax cblas-name)))))
-         (syntax
-          (begin
-            (define cblas-name (pointer->procedure
-                                (srfi4-type->real-type srfi4-type)
-                                (dynamic-func cblas-name-string libcblas)
-                                (list int '* int)))
-            (define (name X)
-              (check-array X 1 srfi4-type)
-              (cblas-name (array-length X) (pointer-to-first X) (stride X 0))))))))))
-
-; float cblas_snrm2 (const int N, const float *X, const int incX)
-(define-nrm2/asum snrm2 cblas_snrm2 'f32)
-; double cblas_dnrm2 (const int N, const double *X, const int incX)
-(define-nrm2/asum dnrm2 cblas_dnrm2 'f64)
-; float cblas_scnrm2 (const int N, const void *X, const int incX)
-(define-nrm2/asum cnrm2 cblas_scnrm2 'c32)
-; double cblas_dznrm2 (const int N, const void *X, const int incX)
-(define-nrm2/asum znrm2 cblas_dznrm2 'c64)
-
-(export cblas_snrm2 cblas_dnrm2 cblas_scnrm2 cblas_dznrm2)
-(export snrm2 dnrm2 cnrm2 znrm2)
-
-; float cblas_sasum2 (const int N, const float *X, const int incX)
-(define-nrm2/asum sasum cblas_sasum 'f32)
-; double cblas_dasum (const int N, const double *X, const int incX)
-(define-nrm2/asum dasum cblas_dasum 'f64)
-; float cblas_scasum (const int N, const void *X, const int incX)
-(define-nrm2/asum casum cblas_scasum 'c32)
-; double cblas_dzasum (const int N, const void *X, const int incX)
-(define-nrm2/asum zasum cblas_dzasum 'c64)
-
-(export cblas_sasum cblas_dasum cblas_scasum cblas_dzasum)
-(export sasum dasum casum zasum)
-
-; -----------------------------
-; sqrt(sum_i(conj(X_i)*X_i)): sscal cscal dscal zscal
+; alpha * X_i -> X_i: sscal cscal dscal zscal
 ; -----------------------------
 
 (define-syntax define-scal
@@ -329,7 +286,7 @@
 (export sscal! dscal! cscal! zscal!)
 
 ; -----------------------------
-; alpha*x_i*y_j + A_{i, j} -> A_{i, j}: sger dger cgeru cgerc zgeru cgerc
+; alpha*x_i*(maybe conj)(y_j) + A_{i, j} -> A_{i, j}: sger dger cgeru cgerc zgeru cgerc
 ; -----------------------------
 
 (define-syntax define-ger
@@ -373,3 +330,86 @@
 
 (export cblas_sger cblas_dger cblas_cgeru cblas_cgerc cblas_zgeru cblas_zgerc)
 (export sger! dger! cgeru! cgerc! zgeru! zgerc!)
+
+; -----------------------------
+; sqrt(sum_i(conj(X_i)*X_i)): snrm2 dnrm2 cnrm2 znrm2
+; sum('absolute value'(X_i))): sasum dasum casum zasum
+; 'absolute value' is |Re|+|Im| in the complex case; cf LawsonEtAl1979,
+; 'Basic linear algebra subprograms for Fortran usage, p. 311.
+; -----------------------------
+
+(define-syntax define-nrm2/asum
+  (lambda (x)
+    (syntax-case x ()
+      ((_ name cblas-name srfi4-type)
+       (with-syntax ((cblas-name-string (symbol->string (syntax->datum (syntax cblas-name)))))
+         (syntax
+          (begin
+            (define cblas-name (pointer->procedure
+                                (srfi4-type->real-type srfi4-type)
+                                (dynamic-func cblas-name-string libcblas)
+                                (list int '* int)))
+            (define (name X)
+              (check-array X 1 srfi4-type)
+              (cblas-name (array-length X) (pointer-to-first X) (stride X 0))))))))))
+
+; float cblas_snrm2 (const int N, const float *X, const int incX)
+(define-nrm2/asum snrm2 cblas_snrm2 'f32)
+; double cblas_dnrm2 (const int N, const double *X, const int incX)
+(define-nrm2/asum dnrm2 cblas_dnrm2 'f64)
+; float cblas_scnrm2 (const int N, const void *X, const int incX)
+(define-nrm2/asum cnrm2 cblas_scnrm2 'c32)
+; double cblas_dznrm2 (const int N, const void *X, const int incX)
+(define-nrm2/asum znrm2 cblas_dznrm2 'c64)
+
+(export cblas_snrm2 cblas_dnrm2 cblas_scnrm2 cblas_dznrm2)
+(export snrm2 dnrm2 cnrm2 znrm2)
+
+; float cblas_sasum2 (const int N, const float *X, const int incX)
+(define-nrm2/asum sasum cblas_sasum 'f32)
+; double cblas_dasum (const int N, const double *X, const int incX)
+(define-nrm2/asum dasum cblas_dasum 'f64)
+; float cblas_scasum (const int N, const void *X, const int incX)
+(define-nrm2/asum casum cblas_scasum 'c32)
+; double cblas_dzasum (const int N, const void *X, const int incX)
+(define-nrm2/asum zasum cblas_dzasum 'c64)
+
+(export cblas_sasum cblas_dasum cblas_scasum cblas_dzasum)
+(export sasum dasum casum zasum)
+
+; -----------------------------
+; i | max_j('absolute value'(X_j)) = X_i: isamax idamax icamax izamax
+; 'absolute value' is |Re|+|Im| in the complex case; cf LawsonEtAl1979,
+; 'Basic linear algebra subprograms for Fortran usage, p. 311.
+; -----------------------------
+
+(define-syntax define-iamax
+  (lambda (x)
+    (syntax-case x ()
+      ((_ name cblas-name srfi4-type)
+       (with-syntax ((cblas-name-string (symbol->string (syntax->datum (syntax cblas-name)))))
+         (syntax
+          (begin
+            (define cblas-name (pointer->procedure
+                                int
+                                (dynamic-func cblas-name-string libcblas)
+                                (list int '* int)))
+            (define (name X)
+              (check-array X 1 srfi4-type)
+              (cblas-name (array-length X) (pointer-to-first X) (stride X 0))))))))))
+
+; int cblas_isamax (const int N, const float *X, const int incX)
+(define-iamax isamax cblas_isamax 'f32)
+; int cblas_idamax (const int N, const double *X, const int incX)
+(define-iamax idamax cblas_idamax 'f64)
+; int cblas_icamax (const int N, const void *X, const int incX)
+(define-iamax icamax cblas_icamax 'c32)
+; int cblas_izamax (const int N, const void *X, const int incX)
+(define-iamax izamax cblas_izamax 'c64)
+
+(export cblas_isamax cblas_idamax cblas_icamax cblas_izamax)
+(export isamax idamax icamax izamax)
+
+; -----------------------------
+; @TODO sgemm dgemm cgemm zgemm
+; -----------------------------
