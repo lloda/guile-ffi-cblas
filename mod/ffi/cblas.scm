@@ -171,29 +171,34 @@
 (export saxpy! daxpy! caxpy! zaxpy!)
 
 ; -----------------------------
-; alpha*sum_j(A_{ij}*X_j) + beta*Y_i -> Y_i: sgemv dgemv cgemv zgemv
+; alpha*sum_j((CBLAS_TRANSPOSE)(A_{ij}) * X_j) + beta*Y_i -> Y_i: sgemv dgemv cgemv zgemv
 ; -----------------------------
 
 ; CBLAS_ORDER
 (define CblasRowMajor 101)
 (define CblasColMajor 102)
+(export CblasRowMajor CblasColMajor)
 
 ; CBLAS_TRANSPOSE
 (define CblasNoTrans 111)
 (define CblasTrans 112)
 (define CblasConjTrans 113)
+(export CblasNoTrans CblasTrans CblasConjTrans)
 
 ; CBLAS_UPLO
 (define CblasUpper 121)
 (define CblasLower 122)
+(export CblasUpper CblasLower)
 
 ; CBLAS_DIAG
 (define CblasNonUnit 131)
 (define CblasUnit 132)
+(export CblasNonUnit CblasUnit)
 
 ; CBLAS_SIDE
 (define CblasLeft 141)
 (define CblasRight 142)
+(export CblasLeft CblasRight)
 
 (define (lead-and-order A)
   (let ((A-strides (shared-array-increments A)))
