@@ -83,57 +83,59 @@
 ; -----------------------------
 
 (define-syntax define-dot-real
-  (syntax-rules ()
-    ((_ name srfi4-type cblas-name cblas-name-string)
-     (begin
-       (define cblas-name (pointer->procedure (srfi4-type->type srfi4-type)
-                                              (dynamic-func cblas-name-string libcblas)
-                                              (list int '* int '* int)))
-       (define (name A B)
-         (check-2-arrays A B 1 srfi4-type)
-         (cblas-name (array-length A)
-                     (pointer-to-first A) (stride A 0)
-                     (pointer-to-first B) (stride B 0)))))))
-
-; double cblas_ddot (const int N, const double *X, const int incX, const double *Y, const int incY)
-(define-dot-real ddot 'f64 cblas_ddot "cblas_ddot")
-(export cblas_ddot ddot)
+  (lambda (x)
+    (syntax-case x ()
+      ((_ name cblas-name srfi4-type)
+       (with-syntax ((cblas-name-string (symbol->string (syntax->datum (syntax cblas-name)))))
+         (syntax
+          (begin
+            (define cblas-name (pointer->procedure (srfi4-type->type srfi4-type)
+                                                   (dynamic-func cblas-name-string libcblas)
+                                                   (list int '* int '* int)))
+            (define (name A B)
+              (check-2-arrays A B 1 srfi4-type)
+              (cblas-name (array-length A)
+                          (pointer-to-first A) (stride A 0)
+                          (pointer-to-first B) (stride B 0))))))))))
 
 ; float cblas_sdot (const int N, const float *X, const int incX, const float *Y, const int incY)
-(define-dot-real sdot 'f32 cblas_sdot "cblas_sdot")
-(export cblas_sdot sdot)
+(define-dot-real sdot cblas_sdot 'f32)
+; double cblas_ddot (const int N, const double *X, const int incX, const double *Y, const int incY)
+(define-dot-real ddot cblas_ddot 'f64)
+
+(export cblas_sdot cblas_ddot)
+(export sdot ddot)
 
 (define-syntax define-dot-complex
-  (syntax-rules ()
-    ((_ name srfi4-type cblas-name cblas-name-string)
-     (begin
-       (define cblas-name (pointer->procedure void
-                                              (dynamic-func cblas-name-string libcblas)
-                                              (list int '* int '* int '*)))
-       (define (name A B)
-         (check-2-arrays A B 1 srfi4-type)
-         (let ((C (make-typed-array srfi4-type *unspecified*)))
-           (cblas-name (array-length A)
-                       (pointer-to-first A) (stride A 0)
-                       (pointer-to-first B) (stride B 0)
-                       (pointer-to-first C))
-           (array-ref C)))))))
-
-; void cblas_zdotu_sub (const int N, const void *X, const int incX, const void *Y, const int incY, void *dotu)
-(define-dot-complex zdotu 'c64 cblas_zdotu_sub "cblas_zdotu_sub")
-(export zdotu cblas_zdotu_sub)
-
-; void cblas_zdotc_sub (const int N, const void *X, const int incX, const void *Y, const int incY, void *dotc)
-(define-dot-complex zdotc 'c64 cblas_zdotc_sub "cblas_zdotc_sub")
-(export zdotc cblas_zdotc_sub)
+  (lambda (x)
+    (syntax-case x ()
+      ((_ name cblas-name srfi4-type)
+       (with-syntax ((cblas-name-string (symbol->string (syntax->datum (syntax cblas-name)))))
+         (syntax
+          (begin
+            (define cblas-name (pointer->procedure void
+                                                   (dynamic-func cblas-name-string libcblas)
+                                                   (list int '* int '* int '*)))
+            (define (name A B)
+              (check-2-arrays A B 1 srfi4-type)
+              (let ((C (make-typed-array srfi4-type *unspecified*)))
+                (cblas-name (array-length A)
+                            (pointer-to-first A) (stride A 0)
+                            (pointer-to-first B) (stride B 0)
+                            (pointer-to-first C))
+                (array-ref C))))))))))
 
 ; void cblas_cdotu_sub (const int N, const void *X, const int incX, const void *Y, const int incY, void *dotu)
-(define-dot-complex cdotu 'c32 cblas_cdotu_sub "cblas_cdotu_sub")
-(export cdotu cblas_cdotu_sub)
-
+(define-dot-complex cdotu cblas_cdotu_sub 'c32)
 ; void cblas_cdotc_sub (const int N, const void *X, const int incX, const void *Y, const int incY, void *dotc)
-(define-dot-complex cdotc 'c32 cblas_cdotc_sub "cblas_cdotc_sub")
-(export cdotc cblas_cdotc_sub)
+(define-dot-complex cdotc cblas_cdotc_sub 'c32)
+; void cblas_zdotu_sub (const int N, const void *X, const int incX, const void *Y, const int incY, void *dotu)
+(define-dot-complex zdotu cblas_zdotu_sub 'c64)
+; void cblas_zdotc_sub (const int N, const void *X, const int incX, const void *Y, const int incY, void *dotc)
+(define-dot-complex zdotc cblas_zdotc_sub 'c64)
+
+(export cdotu cdotc zdotu zdotc)
+(export cblas_cdotu_sub cblas_cdotc_sub cblas_zdotu_sub cblas_zdotc_sub)
 
 ; -----------------------------
 ; a*x + y -> y: saxpy daxpy caxpy zaxpy
@@ -141,33 +143,32 @@
 
 ; @TODO pointer-to-this-value support in the ffi, for old C decls that take double * for complex.
 (define-syntax define-axpy
-  (syntax-rules ()
-    ((_ name srfi4-type cblas-name cblas-name-string)
-     (begin
-       (define cblas-name (pointer->procedure void
-                                              (dynamic-func cblas-name-string libcblas)
-                                              (list int (srfi4-type->type srfi4-type) '* int '* int)))
-       (define (name a X Y)
-         (check-2-arrays X Y 1 srfi4-type)
-         (cblas-name (array-length X) (scalar->cblas-arg srfi4-type a)
-                     (pointer-to-first X) (stride X 0)
-                     (pointer-to-first Y) (stride Y 0)))))))
-
-; void cblas_daxpy (const int N, const double alpha, const double *X, const int incX, double *Y, const int incY)
-(define-axpy daxpy! 'f64 cblas_daxpy "cblas_daxpy")
-(export cblas_daxpy daxpy!)
+  (lambda (x)
+    (syntax-case x ()
+      ((_ name cblas-name srfi4-type)
+       (with-syntax ((cblas-name-string (symbol->string (syntax->datum (syntax cblas-name)))))
+         (syntax
+          (begin
+            (define cblas-name (pointer->procedure void
+                                                   (dynamic-func cblas-name-string libcblas)
+                                                   (list int (srfi4-type->type srfi4-type) '* int '* int)))
+            (define (name a X Y)
+              (check-2-arrays X Y 1 srfi4-type)
+              (cblas-name (array-length X) (scalar->cblas-arg srfi4-type a)
+                          (pointer-to-first X) (stride X 0)
+                          (pointer-to-first Y) (stride Y 0))))))))))
 
 ; void cblas_saxpy (const int N, const float alpha, const float *X, const int incX, float *Y, const int incY)
-(define-axpy saxpy! 'f32 cblas_saxpy "cblas_saxpy")
-(export cblas_saxpy saxpy!)
-
-; void cblas_zaxpy (const int N, const void *alpha, const void *X, const int incX, void *Y, const int incY)
-(define-axpy zaxpy! 'c64 cblas_zaxpy "cblas_zaxpy")
-(export cblas_zaxpy zaxpy!)
-
+(define-axpy saxpy! cblas_saxpy 'f32)
+; void cblas_daxpy (const int N, const double alpha, const double *X, const int incX, double *Y, const int incY)
+(define-axpy daxpy! cblas_daxpy 'f64)
 ; void cblas_caxpy (const int N, const void *alpha, const void *X, const int incX, void *Y, const int incY)
-(define-axpy caxpy! 'c32 cblas_caxpy "cblas_caxpy")
-(export cblas_caxpy caxpy!)
+(define-axpy caxpy! cblas_caxpy 'c32)
+; void cblas_zaxpy (const int N, const void *alpha, const void *X, const int incX, void *Y, const int incY)
+(define-axpy zaxpy! cblas_zaxpy 'c64)
+
+(export cblas_saxpy cblas_daxpy cblas_caxpy cblas_zaxpy)
+(export saxpy! daxpy! caxpy! zaxpy!)
 
 ; -----------------------------
 ; alpha*sum_j(A_{ij}*X_j) + beta*Y_i -> Y_i: sgemv dgemv cgemv zgemv
@@ -212,46 +213,45 @@
     (throw 'bad-size-X (dim A 0) (array-length Y))))
 
 (define-syntax define-gemv
-  (syntax-rules ()
-    ((_ name srfi4-type cblas-name cblas-name-string)
-     (begin
-       (define cblas-name (pointer->procedure
-                           void
-                           (dynamic-func cblas-name-string libcblas)
-                           (list int int int int (srfi4-type->type srfi4-type) '* int
-                                 '* int (srfi4-type->type srfi4-type) '* int)))
-       (define (name alpha A X beta Y)
-         (check-arrays-AXY A X Y srfi4-type)
-         (let-values (((A-lead A-order) (lead-and-order A)))
-           (cblas-name A-order CblasNoTrans
-                       (dim A 0) (dim A 1) (scalar->cblas-arg srfi4-type alpha)
-                       (pointer-to-first A) A-lead
-                       (pointer-to-first X) (stride X 0) (scalar->cblas-arg srfi4-type beta)
-                       (pointer-to-first Y) (stride Y 0))))))))
+  (lambda (x)
+    (syntax-case x ()
+      ((_ name cblas-name srfi4-type)
+       (with-syntax ((cblas-name-string (symbol->string (syntax->datum (syntax cblas-name)))))
+         (syntax
+          (begin
+            (define cblas-name (pointer->procedure
+                                void
+                                (dynamic-func cblas-name-string libcblas)
+                                (list int int int int (srfi4-type->type srfi4-type) '* int
+                                      '* int (srfi4-type->type srfi4-type) '* int)))
+            (define (name alpha A X beta Y)
+              (check-arrays-AXY A X Y srfi4-type)
+              (let-values (((A-lead A-order) (lead-and-order A)))
+                (cblas-name A-order CblasNoTrans
+                            (dim A 0) (dim A 1) (scalar->cblas-arg srfi4-type alpha)
+                            (pointer-to-first A) A-lead
+                            (pointer-to-first X) (stride X 0) (scalar->cblas-arg srfi4-type beta)
+                            (pointer-to-first Y) (stride Y 0)))))))))))
 
 ; void cblas_dgemv (const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE TransA,
 ;                   const int M, const int N, const double alpha, const double *A, const int lda,
 ;                   const double *X, const int incX, const double beta, double *Y, const int incY)
-(define-gemv dgemv! 'f64 cblas_dgemv "cblas_dgemv")
-(export cblas_dgemv dgemv!)
-
+(define-gemv dgemv! cblas_dgemv 'f64)
 ; void cblas_sgemv (const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE TransA,
 ;                   const int M, const int N, const float alpha, const float *A, const int lda,
 ;                   const float *X, const int incX, const float beta, float *Y, const int incY)
-(define-gemv sgemv! 'f32 cblas_sgemv "cblas_sgemv")
-(export cblas_sgemv sgemv!)
-
+(define-gemv sgemv! cblas_sgemv 'f32)
 ; void cblas_zgemv (const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE TransA,
 ;                   const int M, const int N, const void * alpha, const void *A, const int lda,
 ;                   const void *X, const int incX, const void * beta, void *Y, const int incY)
-(define-gemv zgemv! 'c64 cblas_zgemv "cblas_zgemv")
-(export cblas_zgemv zgemv!)
-
+(define-gemv zgemv! cblas_zgemv 'c64)
 ; void cblas_cgemv (const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE TransA,
 ;                   const int M, const int N, const void * alpha, const void *A, const int lda,
 ;                   const void *X, const int incX, const void * beta, void *Y, const int incY)
-(define-gemv cgemv! 'c32 cblas_cgemv "cblas_cgemv")
-(export cblas_cgemv cgemv!)
+(define-gemv cgemv! cblas_cgemv 'c32)
+
+(export cblas_dgemv cblas_sgemv cblas_zgemv cblas_cgemv)
+(export dgemv! sgemv! zgemv! cgemv!)
 
 ; -----------------------------
 ; sqrt(sum_i(conj(X_i)*X_i)): snrm2 dnrm2 cnrm2 znrm2
@@ -261,7 +261,6 @@
   (lambda (x)
     (syntax-case x ()
       ((_ name cblas-name srfi4-type)
-       (and (identifier? (syntax name)) (identifier? (syntax cblas-name)))
        (with-syntax ((cblas-name-string (symbol->string (syntax->datum (syntax cblas-name)))))
          (syntax
           (begin
@@ -282,6 +281,7 @@
 ; double cblas_dznrm2 (const int N, const void *X, const int incX)
 (define-nrm2/asum znrm2 cblas_dznrm2 'c64)
 
+(export cblas_snrm2 cblas_dnrm2 cblas_scnrm2 cblas_dznrm2)
 (export snrm2 dnrm2 cnrm2 znrm2)
 
 ; float cblas_sasum2 (const int N, const float *X, const int incX)
@@ -293,4 +293,37 @@
 ; double cblas_dzasum (const int N, const void *X, const int incX)
 (define-nrm2/asum zasum cblas_dzasum 'c64)
 
+(export cblas_sasum cblas_dasum cblas_scasum cblas_dzasum)
 (export sasum dasum casum zasum)
+
+; -----------------------------
+; sqrt(sum_i(conj(X_i)*X_i)): sscal cscal dscal zscal
+; -----------------------------
+
+(define-syntax define-scal
+  (lambda (x)
+    (syntax-case x ()
+      ((_ name cblas-name srfi4-type)
+       (with-syntax ((cblas-name-string (symbol->string (syntax->datum (syntax cblas-name)))))
+         (syntax
+          (begin
+            (define cblas-name (pointer->procedure
+                                void
+                                (dynamic-func cblas-name-string libcblas)
+                                (list int (srfi4-type->type srfi4-type) '* int)))
+            (define (name alpha X)
+              (check-array X 1 srfi4-type)
+              (cblas-name (array-length X) (scalar->cblas-arg srfi4-type alpha)
+                          (pointer-to-first X) (stride X 0))))))))))
+
+; void cblas_sscal (const int N, const float alpha, const float *X, const int incX)
+(define-scal sscal! cblas_sscal 'f32)
+; void cblas_dscal (const int N, const double alpha, const double *X, const int incX)
+(define-scal dscal! cblas_dscal 'f64)
+; void cblas_cscal (const int N, const void * alpha, const void *X, const int incX)
+(define-scal cscal! cblas_cscal 'c32)
+; void cblas_zscal (const int N, const void * alpha, const void *X, const int incX)
+(define-scal zscal! cblas_zscal 'c64)
+
+(export cblas_sscal cblas_dscal cblas_cscal cblas_zscal)
+(export sscal! dscal! cscal! zscal!)
