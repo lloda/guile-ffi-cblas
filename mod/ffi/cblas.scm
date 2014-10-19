@@ -42,6 +42,12 @@
     ((c32 c64) '*)
     (else (throw 'no-ffi-type-for-type srfi4-type))))
 
+(define (srfi4-type->real-type srfi4-type)
+  (case srfi4-type
+    ((f32 c32) float)
+    ((f64 c64) double)
+    (else (throw 'no-ffi-type-for-real-type srfi4-type))))
+
 (define (pointer-to-first A)
   (bytevector->pointer (shared-array-root A)
                        (* (shared-array-offset A) (srfi4-type-size (array-type A)))))
@@ -246,3 +252,45 @@
 ;                   const void *X, const int incX, const void * beta, void *Y, const int incY)
 (define-gemv cgemv! 'c32 cblas_cgemv "cblas_cgemv")
 (export cblas_cgemv cgemv!)
+
+; -----------------------------
+; sqrt(sum_i(conj(X_i)*X_i)): snrm2 dnrm2 cnrm2 znrm2
+; -----------------------------
+
+(define-syntax define-nrm2/asum
+  (lambda (x)
+    (syntax-case x ()
+      ((_ name cblas-name srfi4-type)
+       (and (identifier? (syntax name)) (identifier? (syntax cblas-name)))
+       (with-syntax ((cblas-name-string (symbol->string (syntax->datum (syntax cblas-name)))))
+         (syntax
+          (begin
+            (define cblas-name (pointer->procedure
+                                (srfi4-type->real-type srfi4-type)
+                                (dynamic-func cblas-name-string libcblas)
+                                (list int '* int)))
+            (define (name X)
+              (check-array X 1 srfi4-type)
+              (cblas-name (array-length X) (pointer-to-first X) (stride X 0))))))))))
+
+; float cblas_snrm2 (const int N, const float *X, const int incX)
+(define-nrm2/asum snrm2 cblas_snrm2 'f32)
+; double cblas_dnrm2 (const int N, const double *X, const int incX)
+(define-nrm2/asum dnrm2 cblas_dnrm2 'f64)
+; float cblas_scnrm2 (const int N, const void *X, const int incX)
+(define-nrm2/asum cnrm2 cblas_scnrm2 'c32)
+; double cblas_dznrm2 (const int N, const void *X, const int incX)
+(define-nrm2/asum znrm2 cblas_dznrm2 'c64)
+
+(export snrm2 dnrm2 cnrm2 znrm2)
+
+; float cblas_sasum2 (const int N, const float *X, const int incX)
+(define-nrm2/asum sasum cblas_sasum 'f32)
+; double cblas_dasum (const int N, const double *X, const int incX)
+(define-nrm2/asum dasum cblas_dasum 'f64)
+; float cblas_scasum (const int N, const void *X, const int incX)
+(define-nrm2/asum casum cblas_scasum 'c32)
+; double cblas_dzasum (const int N, const void *X, const int incX)
+(define-nrm2/asum zasum cblas_dzasum 'c64)
+
+(export sasum dasum casum zasum)
