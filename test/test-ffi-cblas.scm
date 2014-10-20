@@ -61,11 +61,11 @@
 ; Test types
 ; ---------------------------------
 
-(define* (test-approximate-array test expected err)
-  (test-begin "approximate array")
+(define* (test-approximate-array tag test expected err)
+  (test-begin tag)
   (array-for-each (lambda (test expected) (test-approximate test expected err))
                   test expected)
-  (test-end "approximate array"))
+  (test-end tag))
 
 ; ---------------------------------
 ; sdot ddot cdotc cdotu zdotc zdotu
@@ -117,7 +117,7 @@
       (test-equal B (list->typed-array srfi4-type 1 (map (lambda (a b) (+ (* 3 a) b)) Alist Blist)))
       (test-equal A (list->typed-array srfi4-type 1 Alist))
       (axpy! 1.9 A B)
-      (test-approximate-array
+      (test-approximate-array "approximate array"
        B (list->typed-array srfi4-type 1 (map (lambda (a b) (+ (* a (+ 3 1.9)) b)) Alist Blist)) 1e-14)
       (test-equal A (list->typed-array srfi4-type 1 Alist))
       (test-end case-name))))
@@ -215,19 +215,73 @@
 ; @TODO sgemm dgemm cgemm zgemm
 ; ---------------------------------
 
-(define A (fill-A2! (make-typed-array 'f64 *unspecified* 4 3)))
-(define B (fill-A2! (make-typed-array 'f64 *unspecified* 3 5)))
-(define C (fill-A2! (make-typed-array 'f64 *unspecified* 4 5)))
-(dgemm! 1. A CblasNoTrans B CblasNoTrans 1. C)
-(dgemm! 1. A CblasTrans C CblasNoTrans 1. B)
-(dgemm! 1. C CblasNoTrans B CblasTrans 1. A)
+; alpha * sum_k(A_{ik}*B_{kj}) + beta * C_{ij} -> C_{ij}
+(define (ref-gemm! alpha A TransA B TransB beta C)
+  (let* ((A (if ((@@ (ffi cblas) tr?) TransA) (transpose-array A 1 0) A))
+         (B (if ((@@ (ffi cblas) tr?) TransB) (transpose-array B 1 0) B))
+         (M (first (array-dimensions C)))
+         (N (second (array-dimensions C)))
+         (K (first (array-dimensions B))))
+     (do ((i 0 (+ i 1))) ((= i M))
+       (do ((j 0 (+ j 1))) ((= j N))
+         (array-set! C (* beta (array-ref C i j)) i j)
+         (do ((k 0 (+ k 1))) ((= k K))
+           (array-set! C (+ (array-ref C i j) (* alpha (array-ref A i k) (array-ref B k j))) i j))))))
 
-(define A (fill-A2! (transpose-array (make-typed-array 'f64 *unspecified* 4 3) 1 0)))
-(define B (fill-A2! (transpose-array (make-typed-array 'f64 *unspecified* 3 5) 1 0)))
-(define C (fill-A2! (transpose-array (make-typed-array 'f64 *unspecified* 4 5) 1 0)))
-(dgemm! 1. A CblasTrans B CblasTrans 1. (transpose-array C 1 0))
-(dgemm! 1. A CblasNoTrans C CblasTrans 1. (transpose-array B 1 0))
-(dgemm! 1. C CblasTrans B CblasNoTrans 1. (transpose-array A 1 0))
+(define (test-gemm tag gemm! alpha A TransA B TransB beta C)
+  (let ((C1 (array-copy C))
+        (C2 (array-copy C))
+        (AA (array-copy A))
+        (BB (array-copy B)))
+    (gemm! alpha A TransA B TransB beta C1)
+    (ref-gemm! alpha A TransA B TransB beta C2)
+    ;; (test-approximate-array tag C1 C2 1e-15) ; @TODO  as a single test.
+    (test-begin tag)
+    (test-equal C1 C2)
+    (test-end tag)))
+
+(map
+ (match-lambda
+     ((srfi4-type gemm!)
+; some extra tests with non-square matrices.
+      (let ((A (fill-A2! (make-typed-array srfi4-type *unspecified* 4 3)))
+            (B (fill-A2! (make-typed-array srfi4-type *unspecified* 3 5)))
+            (C (fill-A2! (make-typed-array srfi4-type *unspecified* 4 5))))
+        (test-gemm "gemm-1" gemm! 1. A CblasNoTrans B CblasNoTrans 1. C)
+        (test-gemm "gemm-2" gemm! 1. A CblasTrans C CblasNoTrans 1. B)
+        (test-gemm "gemm-3" gemm! 1. C CblasNoTrans B CblasTrans 1. A))
+      (let ((A (fill-A2! (transpose-array (make-typed-array 'f64 *unspecified* 4 3) 1 0)))
+            (B (fill-A2! (transpose-array (make-typed-array 'f64 *unspecified* 3 5) 1 0)))
+            (C (fill-A2! (transpose-array (make-typed-array 'f64 *unspecified* 4 5) 1 0))))
+        (test-gemm "gemm-4" dgemm! 1. A CblasTrans B CblasTrans 1. (transpose-array C 1 0))
+        (test-gemm "gemm-5" dgemm! 1. A CblasNoTrans C CblasTrans 1. (transpose-array B 1 0))
+        (test-gemm "gemm-6" dgemm! 1. C CblasTrans B CblasNoTrans 1. (transpose-array A 1 0)))
+      (for-each
+       (lambda (make-A)
+         (for-each
+          (lambda (make-B)
+            (for-each
+             (lambda (make-C)
+               (for-each
+                (lambda (TransA)
+                  (for-each
+                   (lambda (TransB)
+                     (test-gemm (format #f "~a:~a:~a:~a:~a:~a" srfi4-type (procedure-name make-A)
+                                        (procedure-name make-B) (procedure-name make-C)
+                                        TransA TransB)
+                                gemm! 3. (fill-A2! (make-A srfi4-type)) TransA
+                                (fill-A2! (make-B srfi4-type)) TransB
+                                2. (fill-A2! (make-C srfi4-type))))
+; @TODO Conj, etc. for c32/c64.
+                   (list CblasTrans CblasNoTrans)))
+                (list CblasTrans CblasNoTrans)))
+             (list make-M-c-order make-M-fortran-order make-M-offset make-M-strided)))
+          (list make-M-c-order make-M-fortran-order make-M-offset make-M-strided)))
+       (list make-M-c-order make-M-fortran-order make-M-offset make-M-strided))))
+ `((f32 ,sgemm!)
+   (f64 ,dgemm!)
+   (c32 ,cgemm!)
+   (c64 ,zgemm!)))
 
 (unless (zero? (test-runner-fail-count (test-runner-current)))
   (error "FAILED test-ffi-cblas.csm"))
