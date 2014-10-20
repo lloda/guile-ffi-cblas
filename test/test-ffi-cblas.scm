@@ -166,7 +166,7 @@
       (test-begin case-name)
       (let ((Y1 (array-copy Y))
             (Y2 (array-copy Y)))
-        (gemv! 2. A X 3. Y1)
+        (gemv! 2. A CblasNoTrans X 3. Y1)  ; @TODO Test other values of TransA
         (ref-gemv! 2. A X 3. Y2)
         (test-equal Y1 Y2)
         (test-equal A A1)
@@ -214,6 +214,20 @@
 ; ---------------------------------
 ; @TODO sgemm dgemm cgemm zgemm
 ; ---------------------------------
+
+(define A (fill-A2! (make-typed-array 'f64 *unspecified* 4 3)))
+(define B (fill-A2! (make-typed-array 'f64 *unspecified* 3 5)))
+(define C (fill-A2! (make-typed-array 'f64 *unspecified* 4 5)))
+(dgemm! 1. A CblasNoTrans B CblasNoTrans 1. C)
+(dgemm! 1. A CblasTrans C CblasNoTrans 1. B)
+(dgemm! 1. C CblasNoTrans B CblasTrans 1. A)
+
+(define A (fill-A2! (transpose-array (make-typed-array 'f64 *unspecified* 4 3) 1 0)))
+(define B (fill-A2! (transpose-array (make-typed-array 'f64 *unspecified* 3 5) 1 0)))
+(define C (fill-A2! (transpose-array (make-typed-array 'f64 *unspecified* 4 5) 1 0)))
+(dgemm! 1. A CblasTrans B CblasTrans 1. (transpose-array C 1 0))
+(dgemm! 1. A CblasNoTrans C CblasTrans 1. (transpose-array B 1 0))
+(dgemm! 1. C CblasTrans B CblasNoTrans 1. (transpose-array A 1 0))
 
 (unless (zero? (test-runner-fail-count (test-runner-current)))
   (error "FAILED test-ffi-cblas.csm"))
