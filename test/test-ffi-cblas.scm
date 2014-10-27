@@ -266,7 +266,7 @@
                 (lambda (TransA)
                   (for-each
                    (lambda (TransB)
-                     (test-gemm (format #f "~a:~a:~a:~a:~a:~a" srfi4-type (procedure-name make-A)
+                     (test-gemm (format #f "gemm:~a:~a:~a:~a:~a:~a" srfi4-type (procedure-name make-A)
                                         (procedure-name make-B) (procedure-name make-C)
                                         TransA TransB)
                                 gemm! 3. (fill-A2! (make-A srfi4-type)) TransA
