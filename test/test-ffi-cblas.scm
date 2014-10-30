@@ -58,6 +58,17 @@
   A)
 
 ; ---------------------------------
+; Utilities
+; ---------------------------------
+
+(define (conj a) (make-rectangular (real-part a) (- (imag-part a))))
+
+(define (array-copy A)
+  (let ((B (apply make-typed-array (array-type A) *unspecified* (array-dimensions A))))
+    (array-copy! A B)
+    B))
+
+; ---------------------------------
 ; Test types
 ; ---------------------------------
 
@@ -71,7 +82,6 @@
 ; sdot ddot cdotc cdotu zdotc zdotu
 ; ---------------------------------
 
-(define (conj a) (make-rectangular (real-part a) (- (imag-part a))))
 (define dotc-step (lambda (a b c) (+ c (* (conj a) b))))
 (define dotu-step (lambda (a b c) (+ c (* a b))))
 
@@ -140,11 +150,6 @@
 ; ---------------------------------
 ; sgemv dgemv cgemv zgemv
 ; ---------------------------------
-
-(define (array-copy A)
-  (let ((B (apply make-typed-array (array-type A) *unspecified* (array-dimensions A))))
-    (array-copy! A B)
-    B))
 
 (define (ref-gemv! alpha A X beta Y)
   (match (array-dimensions A)
