@@ -13,7 +13,7 @@
 ; https://code.google.com/p/blis/wiki/BLISAPIQuickReference
 
 ; @TODO As an alternative go through installation.
-(define libblis (dynamic-link (let ((lpath (getenv "GUILE_FFI_BLIS_LIBBLIS_PATH")))
+(define libblis (dynamic-link (let ((lpath (getenv "GUILE_FFI_CBLAS_LIBBLIS_PATH")))
                                 (if (and lpath (not (string=? lpath "")))
                                   (string-append lpath file-name-separator-string "libblis")
                                   "libblis"))))
