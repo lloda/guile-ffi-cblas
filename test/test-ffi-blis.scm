@@ -48,6 +48,9 @@
 (define (make-M-strided-both type)
   (make-shared-array (make-typed-array type *unspecified* 20 20) (lambda (i j) (list (* i 2) (* j 2))) 10 10))
 
+(define (make-M-strided-reversed type)
+  (make-shared-array (make-typed-array type *unspecified* 20 20) (lambda (i j) (list (- 19 (* i 2)) (- 19 (* j 2)))) 10 10))
+
 (define (make-M-offset type)
   (make-shared-array (make-typed-array type *unspecified* 12 13) (lambda (i j) (list (+ i 2) (+ j 3))) 10 10))
 
@@ -71,6 +74,26 @@
     (array-copy! A B)
     B))
 
+(define (list-product . rest)
+  "make a list of all lists with 1st element from 1st arg, 2nd element from
+
+   (list-product '(1 2)) => ((1) (2))
+   (list-product '(1 2) '(3 4)) => ((1 3) (1 4) (2 3) (2 4))
+   (list-product '(1 2) '(3 4) '(5 6)) => ((1 3 5) (1 3 6) etc.)"
+  (cond
+    ((null? rest)
+      '())
+    ((null? (cdr rest))
+      (map list (car rest)))
+    (else
+      (let ((list-product-rest (apply list-product (cdr rest))))
+        (append-map!
+          (lambda (p)
+            (map
+              (lambda (v) (cons p v))
+              list-product-rest))
+          (car rest))))))
+
 ; ---------------------------------
 ; Test types
 ; ---------------------------------
@@ -82,7 +105,7 @@
   (test-end tag))
 
 ; ---------------------------------
-; @TODO sgemm dgemm cgemm zgemm
+; sgemm dgemm cgemm zgemm
 ; ---------------------------------
 
 (define (apply-transpose-flag A TransA)
@@ -134,26 +157,17 @@
         (test-gemm "gemm-5" dgemm! 1. A BLIS_NO_TRANSPOSE C BLIS_TRANSPOSE 1. (transpose-array B 1 0))
         (test-gemm "gemm-6" dgemm! 1. C BLIS_TRANSPOSE B BLIS_NO_TRANSPOSE 1. (transpose-array A 1 0)))
       (for-each
-       (lambda (make-A)
-         (for-each
-          (lambda (make-B)
-            (for-each
-             (lambda (make-C)
-               (for-each
-                (lambda (TransA)
-                  (for-each
-                   (lambda (TransB)
-                     (test-gemm (format #f "gemm:~a:~a:~a:~a:~a:~a" srfi4-type (procedure-name make-A)
-                                        (procedure-name make-B) (procedure-name make-C)
-                                        TransA TransB)
-                                gemm! 3. (fill-A2! (make-A srfi4-type)) TransA
-                                (fill-A2! (make-B srfi4-type)) TransB
-                                2. (fill-A2! (make-C srfi4-type))))
-                   (list BLIS_TRANSPOSE BLIS_NO_TRANSPOSE BLIS_CONJ_NO_TRANSPOSE BLIS_CONJ_TRANSPOSE)))
-                (list BLIS_TRANSPOSE BLIS_NO_TRANSPOSE BLIS_CONJ_NO_TRANSPOSE BLIS_CONJ_TRANSPOSE)))
-             (list make-M-c-order make-M-fortran-order make-M-offset make-M-strided make-M-strided-both)))
-          (list make-M-c-order make-M-fortran-order make-M-offset make-M-strided make-M-strided-both)))
-       (list make-M-c-order make-M-fortran-order make-M-offset make-M-strided make-M-strided-both))))
+       (match-lambda ((make-A make-B make-C TransA TransB)
+                      (test-gemm (format #f "gemm:~a:~a:~a:~a:~a:~a" srfi4-type (procedure-name make-A)
+                                         (procedure-name make-B) (procedure-name make-C)
+                                         TransA TransB)
+                                 gemm! 3. (fill-A2! (make-A srfi4-type)) TransA
+                                 (fill-A2! (make-B srfi4-type)) TransB
+                                 2. (fill-A2! (make-C srfi4-type)))))
+       (apply list-product
+         (append (make-list 3 (list make-M-c-order make-M-fortran-order make-M-offset
+                                    make-M-strided make-M-strided-both make-M-strided-reversed))
+                 (make-list 2 (list BLIS_TRANSPOSE BLIS_NO_TRANSPOSE BLIS_CONJ_NO_TRANSPOSE BLIS_CONJ_TRANSPOSE)))))))
  `((f32 ,sgemm!)
    (f64 ,dgemm!)
    (c32 ,cgemm!)

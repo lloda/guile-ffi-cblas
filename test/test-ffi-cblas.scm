@@ -10,7 +10,7 @@
 (import (ffi cblas) (srfi srfi-64) (srfi srfi-1) (ice-9 match))
 
 ; ---------------------------------
-; Various sorts of arrays.
+; Various sorts of arrays. @TODO Also test with negative strides.
 ; ---------------------------------
 
 (define (make-v-compact type)
@@ -217,7 +217,7 @@
 ; ---------------------------------
 
 ; ---------------------------------
-; @TODO sgemm dgemm cgemm zgemm
+; sgemm dgemm cgemm zgemm
 ; ---------------------------------
 
 ; alpha * sum_k(A_{ik}*B_{kj}) + beta * C_{ij} -> C_{ij}

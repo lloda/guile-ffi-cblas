@@ -48,6 +48,7 @@
     ((f64 c64) double)
     (else (throw 'no-ffi-type-for-real-type srfi4-type))))
 
+; @BUG BLAS expects different when the inc is negative (expects pointer to size*inc element, so first in memory; not to the logically first element).
 (define (pointer-to-first A)
   (bytevector->pointer (shared-array-root A)
                        (* (shared-array-offset A) (srfi4-type-size (array-type A)))))
