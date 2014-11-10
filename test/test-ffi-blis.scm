@@ -8,91 +8,16 @@
 ; later version.
 
 (import (ffi blis) (srfi srfi-64) (srfi srfi-1) (ice-9 match))
+(include "common.scm")
 
-; ---------------------------------
-; Various sorts of arrays.
-; ---------------------------------
-
-(define (make-v-compact type)
-  (make-typed-array type *unspecified* 10))
-
-(define (make-v-strided type)
-  (make-shared-array (make-typed-array type *unspecified* 20) (lambda (i) (list (* i 2))) 10))
-
-(define (make-v-offset type)
-  (make-shared-array (make-typed-array type *unspecified* 12) (lambda (i) (list (+ i 2))) 10))
-
-(define (fill-A1! A)
-  (case (array-type A)
-    ((f32 f64) (array-index-map! A (lambda (i) (- i 4))))
-    ((c32 c64) (array-index-map! A (lambda (i) (make-rectangular (+ i 1) (- i 5)))))
-    (else (throw 'bad-array-type (array-type A))))
-  A)
-
-(define (fill-B1! A)
-  (case (array-type A)
-    ((f32 f64) (array-index-map! A (lambda (i) (+ i 3))))
-    ((c32 c64) (array-index-map! A (lambda (i) (make-rectangular (+ i 2) (- 5 i)))))
-    (else (throw 'bad-array-type (array-type A))))
-  A)
-
-(define (make-M-c-order type)
-  (make-typed-array type *unspecified* 10 10))
-
-(define (make-M-fortran-order type)
-  (transpose-array (make-typed-array type *unspecified* 10 10) 1 0))
-
-(define (make-M-strided type)
-  (make-shared-array (make-typed-array type *unspecified* 20 10) (lambda (i j) (list (* i 2) j)) 10 10))
-
-(define (make-M-strided-both type)
-  (make-shared-array (make-typed-array type *unspecified* 20 20) (lambda (i j) (list (* i 2) (* j 2))) 10 10))
-
-(define (make-M-strided-reversed type)
-  (make-shared-array (make-typed-array type *unspecified* 20 20) (lambda (i j) (list (- 19 (* i 2)) (- 19 (* j 2)))) 10 10))
-
-(define (make-M-offset type)
-  (make-shared-array (make-typed-array type *unspecified* 12 13) (lambda (i j) (list (+ i 2) (+ j 3))) 10 10))
-
-(define (fill-A2! A)
-  (case (array-type A)
-    ((f32 f64) (array-index-map!
-                A (lambda (i j) (+ 4 (* i 1) (* j j 2)))))
-    ((c32 c64) (array-index-map!
-                A (lambda (i j) (make-rectangular (+ 4 (* i 1) (* j j 2)) (+ -3 (* i i 1) (* j 2) -4)))))
-    (else (throw 'bad-array-type (array-type A))))
-  A)
-
-; ---------------------------------
-; Utilities
-; ---------------------------------
-
-(define (conj a) (make-rectangular (real-part a) (- (imag-part a))))
-
-(define (array-copy A)
-  (let ((B (apply make-typed-array (array-type A) *unspecified* (array-dimensions A))))
-    (array-copy! A B)
-    B))
-
-(define (list-product . rest)
-  "make a list of all lists with 1st element from 1st arg, 2nd element from
-
-   (list-product '(1 2)) => ((1) (2))
-   (list-product '(1 2) '(3 4)) => ((1 3) (1 4) (2 3) (2 4))
-   (list-product '(1 2) '(3 4) '(5 6)) => ((1 3 5) (1 3 6) etc.)"
-  (cond
-    ((null? rest)
-      '())
-    ((null? (cdr rest))
-      (map list (car rest)))
-    (else
-      (let ((list-product-rest (apply list-product (cdr rest))))
-        (append-map!
-          (lambda (p)
-            (map
-              (lambda (v) (cons p v))
-              list-product-rest))
-          (car rest))))))
+(define (apply-transpose-flag A flag)
+  (cond ((or (equal? flag BLIS_NO_TRANSPOSE) (equal? flag BLIS_NO_CONJUGATE)) A)
+        ((equal? flag BLIS_TRANSPOSE) (transpose-array A 1 0))
+        ((or (equal? flag BLIS_CONJ_NO_TRANSPOSE) (equal? flag BLIS_CONJUGATE))
+         (let ((B (array-copy A))) (array-map! B conj A) B))
+        ((equal? flag BLIS_CONJ_TRANSPOSE)
+         (let ((B (array-copy A))) (array-map! B conj A) (transpose-array B 1 0)))
+        (else (throw 'bad-transpose-flag flag))))
 
 ; ---------------------------------
 ; Test types
@@ -108,17 +33,10 @@
 ; sgemm dgemm cgemm zgemm
 ; ---------------------------------
 
-(define (apply-transpose-flag A TransA)
-  (cond ((equal? TransA BLIS_NO_TRANSPOSE) A)
-        ((equal? TransA BLIS_TRANSPOSE) (transpose-array A 1 0))
-        ((equal? TransA BLIS_CONJ_NO_TRANSPOSE) (let ((B (array-copy A))) (array-map! B conj A) B))
-        ((equal? TransA BLIS_CONJ_TRANSPOSE) (let ((B (array-copy A))) (array-map! B conj A) (transpose-array B 1 0)))
-        (else (throw 'bad-transpose-flag TransA))))
-
 ; alpha * sum_k(A_{ik}*B_{kj}) + beta * C_{ij} -> C_{ij}
-(define (ref-gemm! alpha A TransA B TransB beta C)
-  (let* ((A (apply-transpose-flag A TransA))
-         (B (apply-transpose-flag B TransB))
+(define (ref-gemm! alpha A transA B transB beta C)
+  (let* ((A (apply-transpose-flag A transA))
+         (B (apply-transpose-flag B transB))
          (M (first (array-dimensions C)))
          (N (second (array-dimensions C)))
          (K (first (array-dimensions B))))
@@ -128,13 +46,13 @@
          (do ((k 0 (+ k 1))) ((= k K))
            (array-set! C (+ (array-ref C i j) (* alpha (array-ref A i k) (array-ref B k j))) i j))))))
 
-(define (test-gemm tag gemm! alpha A TransA B TransB beta C)
+(define (test-gemm tag gemm! alpha A transA B transB beta C)
   (let ((C1 (array-copy C))
         (C2 (array-copy C))
         (AA (array-copy A))
         (BB (array-copy B)))
-    (gemm! alpha A TransA B TransB beta C1)
-    (ref-gemm! alpha A TransA B TransB beta C2)
+    (gemm! alpha A transA B transB beta C1)
+    (ref-gemm! alpha A transA B transB beta C2)
     ;; (test-approximate-array tag C1 C2 1e-15) ; @TODO  as a single test.
     (test-begin tag)
     (test-equal C1 C2)
@@ -157,12 +75,12 @@
         (test-gemm "gemm-5" dgemm! 1. A BLIS_NO_TRANSPOSE C BLIS_TRANSPOSE 1. (transpose-array B 1 0))
         (test-gemm "gemm-6" dgemm! 1. C BLIS_TRANSPOSE B BLIS_NO_TRANSPOSE 1. (transpose-array A 1 0)))
       (for-each
-       (match-lambda ((make-A make-B make-C TransA TransB)
+       (match-lambda ((make-A make-B make-C transA transB)
                       (test-gemm (format #f "gemm:~a:~a:~a:~a:~a:~a" srfi4-type (procedure-name make-A)
                                          (procedure-name make-B) (procedure-name make-C)
-                                         TransA TransB)
-                                 gemm! 3. (fill-A2! (make-A srfi4-type)) TransA
-                                 (fill-A2! (make-B srfi4-type)) TransB
+                                         transA transB)
+                                 gemm! 3. (fill-A2! (make-A srfi4-type)) transA
+                                 (fill-A2! (make-B srfi4-type)) transB
                                  2. (fill-A2! (make-C srfi4-type)))))
        (apply list-product
          (append (make-list 3 (list make-M-c-order make-M-fortran-order make-M-offset
@@ -172,6 +90,61 @@
    (f64 ,dgemm!)
    (c32 ,cgemm!)
    (c64 ,zgemm!)))
+
+; ---------------------------------
+; sgemm dgemm cgemm zgemm
+; ---------------------------------
+
+; alpha*sum_j(A_{ij} * X_j) + beta*Y_i -> Y_i
+(define (ref-gemv! alpha A transA X conjX beta Y)
+  (let* ((A (apply-transpose-flag A transA))
+         (X (apply-transpose-flag X conjX)))
+    (match (array-dimensions A)
+      ((M N)
+       (do ((i 0 (+ i 1))) ((= i M))
+         (array-set! Y (* beta (array-ref Y i)) i)
+         (do ((j 0 (+ j 1))) ((= j N))
+           (array-set! Y (+ (array-ref Y i) (* alpha (array-ref A i j) (array-ref X j))) i)))
+       Y))))
+
+; alpha * sum_k(A_{ik}*B_{kj}) + beta * C_{ij} -> C_{ij}
+
+(define (test-gemv tag gemv! alpha A transA X conjX beta Y)
+  (let ((Y1 (array-copy Y))
+        (Y2 (array-copy Y))
+        (AA (array-copy A))
+        (XX (array-copy X)))
+    (gemv! alpha A transA X conjX beta Y1)
+    (ref-gemv! alpha A transA X conjX beta Y2)
+    ;; (test-approximate-array tag Y1 Y2 1e-15) ; @TODO  as a single test.
+    (test-begin tag)
+    (test-equal Y1 Y2)
+    (test-end tag)))
+
+(map
+ (match-lambda
+     ((srfi4-type gemv!)
+; @TODO some extra tests with non-square matrices.
+      (for-each
+       (match-lambda ((make-A make-X make-Y transA conjX)
+                      (test-gemv (format #f "gemv:~a:~a:~a:~a:~a:~a" srfi4-type (procedure-name make-A)
+                                         (procedure-name make-X) (procedure-name make-Y)
+                                         transA conjX)
+                                 gemv! 3. (fill-A2! (make-A srfi4-type)) transA
+                                 (fill-A1! (make-X srfi4-type)) conjX
+                                 2. (fill-A1! (make-Y srfi4-type)))))
+       (apply list-product
+         (list (list make-M-c-order make-M-fortran-order make-M-offset
+                     make-M-strided make-M-strided-both make-M-strided-reversed)
+               (list make-v-compact make-v-strided make-v-offset make-v-strided-reversed)
+               (list make-v-compact make-v-strided make-v-offset make-v-strided-reversed)
+               (list BLIS_TRANSPOSE BLIS_NO_TRANSPOSE BLIS_CONJ_NO_TRANSPOSE BLIS_CONJ_TRANSPOSE)
+               (list BLIS_NO_CONJUGATE BLIS_CONJUGATE))))))
+ `((f32 ,sgemv!)
+   (f64 ,dgemv!)
+   (c32 ,cgemv!)
+   (c64 ,zgemv!)))
+
 
 (unless (zero? (test-runner-fail-count (test-runner-current)))
   (error "FAILED test-ffi-cblas.csm"))

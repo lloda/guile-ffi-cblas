@@ -309,7 +309,7 @@
 (export sger! dger! cgeru! cgerc! zgeru! zgerc!)
 
 ; -----------------------------
-; alpha*sum_j((CBLAS_TRANSPOSE)(A_{ij}) * X_j) + beta*Y_i -> Y_i: sgemv dgemv cgemv zgemv
+; alpha*sum_j(A_{ij} * X_j) + beta*Y_i -> Y_i: sgemv dgemv cgemv zgemv
 ; -----------------------------
 
 ; CBLAS_ORDER

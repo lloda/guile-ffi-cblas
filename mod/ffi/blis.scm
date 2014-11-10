@@ -21,6 +21,8 @@
 
 (define dim_t int64)
 (define inc_t int64)
+(define trans_t int)
+(define conj_t int)
 
 ; -----------------------------
 ; wrapper utilities
@@ -58,22 +60,8 @@
 (define (dim A i)
   (list-ref (array-dimensions A) i))
 
-;; Consider http://wiki.call-cc.org/eggref/4/blas#usage
-;; The three levels would be:
-
-;; 1) ([original library name] ...) ~ (unsafe-xxx! ...) the result of
-;; pointer->procedure.
-
-;; 2) (name! ...) ~ (xxx! ...) requires compatible objects (no copies), expects
-;; pre-sized arrays for the return. Increments are implicit in the array
-;; object. But this means that slicing should be easier than it is in plain
-;; Guile.
-
-;; 3) (name ...) ~ (xxx ...) converts arguments as far as possible. Returns new
-;; typed arrays.
-
 ; -----------------------------
-; alpha * sum_k(A_{ik}*B_{kj}) + beta * C_{ij} -> C_{ij}: sgemm dgemm cgemm zgemm
+; BLIS flags
 ; -----------------------------
 
 (define BLIS_NO_TRANSPOSE 0)
@@ -99,6 +87,15 @@
 
 (export BLIS_NO_TRANSPOSE BLIS_TRANSPOSE BLIS_CONJ_NO_TRANSPOSE BLIS_CONJ_TRANSPOSE tr? fliptr)
 
+(define BLIS_NO_CONJUGATE 0)
+(define BLIS_CONJUGATE (ash 1 4))
+
+(export BLIS_NO_CONJUGATE BLIS_CONJUGATE)
+
+; -----------------------------
+; alpha * sum_k(A_{ik}*B_{kj}) + beta * C_{ij} -> C_{ij}: sgemm dgemm cgemm zgemm
+; -----------------------------
+
 (define-syntax define-gemm
   (lambda (x)
     (syntax-case x ()
@@ -109,7 +106,7 @@
             (define blis-name (pointer->procedure
                                void
                                (dynamic-func blis-name-string libblis)
-                               (list int int dim_t dim_t dim_t
+                               (list trans_t trans_t dim_t dim_t dim_t
                                      '* '* inc_t inc_t '* inc_t inc_t
                                      '* '* inc_t inc_t)))
             (define (name! alpha A transA B transB beta C)
@@ -154,3 +151,58 @@
 (export bli_sgemm bli_dgemm bli_cgemm bli_zgemm)
 (export sgemm! dgemm! cgemm! zgemm!)
 (export sgemm dgemm cgemm zgemm)
+
+; -----------------------------
+; alpha*sum_j(A_{ij} * X_j) + beta*Y_i -> Y_i: sgemv dgemv cgemv zgemv
+; -----------------------------
+
+(define-syntax define-gemv
+  (lambda (x)
+    (syntax-case x ()
+      ((_ name! name blis-name srfi4-type)
+       (with-syntax ((blis-name-string (symbol->string (syntax->datum (syntax blis-name)))))
+         (syntax
+          (begin
+            (define blis-name (pointer->procedure
+                               void
+                               (dynamic-func blis-name-string libblis)
+                               (list trans_t conj_t dim_t dim_t '* '* inc_t inc_t
+                                     '* inc_t '* '* inc_t)))
+            (define (name! alpha A transA X conjX beta Y)
+              (check-array A 2 srfi4-type)
+              (check-array X 1 srfi4-type)
+              (check-array Y 1 srfi4-type)
+              (let ((M (array-length Y))
+                    (N (array-length X)))
+                (unless (= M (dim A (if (tr? transA) 1 0))) (throw 'mismatched-YA))
+                (unless (= N (dim A (if (tr? transA) 0 1))) (throw 'mismatched-XA))
+                (blis-name transA conjX M N
+                           (scalar->blis-arg srfi4-type alpha)
+                           (pointer-to-first A) (stride A 0) (stride A 1)
+                           (pointer-to-first X) (stride X 0)
+                           (scalar->blis-arg srfi4-type beta)
+                           (pointer-to-first Y) (stride Y 0))))
+            (define (name alpha A transA X conjX)
+              (let ((Y (make-typed-array srfi4-type *unspecified*
+                                         (dim A (if (tr? transA) 1 0)))))
+                (name! alpha A transA X conjX 0. Y)
+                Y)))))))))
+
+;; void bli_?gemv( trans_t transa,
+;;                 conj_t  conjx,
+;;                 dim_t   m,
+;;                 dim_t   n,
+;;                 ctype*  alpha,
+;;                 ctype*  a, inc_t rsa, inc_t csa,
+;;                 ctype*  x, inc_t incx,
+;;                 ctype*  beta,
+;;                 ctype*  y, inc_t incy );
+
+(define-gemv sgemv! sgemv bli_sgemv 'f32)
+(define-gemv dgemv! dgemv bli_dgemv 'f64)
+(define-gemv cgemv! cgemv bli_cgemv 'c32)
+(define-gemv zgemv! zgemv bli_zgemv 'c64)
+
+(export bli_sgemv bli_dgemv bli_cgemv bli_zgemv)
+(export sgemv! dgemv! cgemv! zgemv!)
+(export sgemv dgemv cgemv zgemv)

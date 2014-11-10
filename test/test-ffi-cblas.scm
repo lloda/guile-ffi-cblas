@@ -8,65 +8,7 @@
 ; later version.
 
 (import (ffi cblas) (srfi srfi-64) (srfi srfi-1) (ice-9 match))
-
-; ---------------------------------
-; Various sorts of arrays. @TODO Also test with negative strides.
-; ---------------------------------
-
-(define (make-v-compact type)
-  (make-typed-array type *unspecified* 10))
-
-(define (make-v-strided type)
-  (make-shared-array (make-typed-array type *unspecified* 20) (lambda (i) (list (* i 2))) 10))
-
-(define (make-v-offset type)
-  (make-shared-array (make-typed-array type *unspecified* 12) (lambda (i) (list (+ i 2))) 10))
-
-(define (fill-A1! A)
-  (case (array-type A)
-    ((f32 f64) (array-index-map! A (lambda (i) (- i 4))))
-    ((c32 c64) (array-index-map! A (lambda (i) (make-rectangular (+ i 1) (- i 5)))))
-    (else (throw 'bad-array-type (array-type A))))
-  A)
-
-(define (fill-B1! A)
-  (case (array-type A)
-    ((f32 f64) (array-index-map! A (lambda (i) (+ i 3))))
-    ((c32 c64) (array-index-map! A (lambda (i) (make-rectangular (+ i 2) (- 5 i)))))
-    (else (throw 'bad-array-type (array-type A))))
-  A)
-
-(define (make-M-c-order type)
-  (make-typed-array type *unspecified* 10 10))
-
-(define (make-M-fortran-order type)
-  (transpose-array (make-typed-array type *unspecified* 10 10) 1 0))
-
-(define (make-M-strided type)
-  (make-shared-array (make-typed-array type *unspecified* 20 10) (lambda (i j) (list (* i 2) j)) 10 10))
-
-(define (make-M-offset type)
-  (make-shared-array (make-typed-array type *unspecified* 12 13) (lambda (i j) (list (+ i 2) (+ j 3))) 10 10))
-
-(define (fill-A2! A)
-  (case (array-type A)
-    ((f32 f64) (array-index-map!
-                A (lambda (i j) (+ 4 (* i 1) (* j j 2)))))
-    ((c32 c64) (array-index-map!
-                A (lambda (i j) (make-rectangular (+ 4 (* i 1) (* j j 2)) (+ -3 (* i i 1) (* j 2) -4)))))
-    (else (throw 'bad-array-type (array-type A))))
-  A)
-
-; ---------------------------------
-; Utilities
-; ---------------------------------
-
-(define (conj a) (make-rectangular (real-part a) (- (imag-part a))))
-
-(define (array-copy A)
-  (let ((B (apply make-typed-array (array-type A) *unspecified* (array-dimensions A))))
-    (array-copy! A B)
-    B))
+(include "common.scm")
 
 ; ---------------------------------
 ; Test types
@@ -171,7 +113,7 @@
       (test-begin case-name)
       (let ((Y1 (array-copy Y))
             (Y2 (array-copy Y)))
-        (gemv! 2. A CblasNoTrans X 3. Y1)  ; @TODO Test other values of TransA
+        (gemv! 2. A CblasNoTrans X 3. Y1)  ; @TODO Test other values of transA
         (ref-gemv! 2. A X 3. Y2)
         (test-equal Y1 Y2)
         (test-equal A A1)
@@ -221,9 +163,9 @@
 ; ---------------------------------
 
 ; alpha * sum_k(A_{ik}*B_{kj}) + beta * C_{ij} -> C_{ij}
-(define (ref-gemm! alpha A TransA B TransB beta C)
-  (let* ((A (if ((@@ (ffi cblas) tr?) TransA) (transpose-array A 1 0) A))
-         (B (if ((@@ (ffi cblas) tr?) TransB) (transpose-array B 1 0) B))
+(define (ref-gemm! alpha A transA B transB beta C)
+  (let* ((A (if ((@@ (ffi cblas) tr?) transA) (transpose-array A 1 0) A))
+         (B (if ((@@ (ffi cblas) tr?) transB) (transpose-array B 1 0) B))
          (M (first (array-dimensions C)))
          (N (second (array-dimensions C)))
          (K (first (array-dimensions B))))
@@ -233,13 +175,13 @@
          (do ((k 0 (+ k 1))) ((= k K))
            (array-set! C (+ (array-ref C i j) (* alpha (array-ref A i k) (array-ref B k j))) i j))))))
 
-(define (test-gemm tag gemm! alpha A TransA B TransB beta C)
+(define (test-gemm tag gemm! alpha A transA B transB beta C)
   (let ((C1 (array-copy C))
         (C2 (array-copy C))
         (AA (array-copy A))
         (BB (array-copy B)))
-    (gemm! alpha A TransA B TransB beta C1)
-    (ref-gemm! alpha A TransA B TransB beta C2)
+    (gemm! alpha A transA B transB beta C1)
+    (ref-gemm! alpha A transA B transB beta C2)
     ;; (test-approximate-array tag C1 C2 1e-15) ; @TODO  as a single test.
     (test-begin tag)
     (test-equal C1 C2)
@@ -268,14 +210,14 @@
             (for-each
              (lambda (make-C)
                (for-each
-                (lambda (TransA)
+                (lambda (transA)
                   (for-each
-                   (lambda (TransB)
+                   (lambda (transB)
                      (test-gemm (format #f "gemm:~a:~a:~a:~a:~a:~a" srfi4-type (procedure-name make-A)
                                         (procedure-name make-B) (procedure-name make-C)
-                                        TransA TransB)
-                                gemm! 3. (fill-A2! (make-A srfi4-type)) TransA
-                                (fill-A2! (make-B srfi4-type)) TransB
+                                        transA transB)
+                                gemm! 3. (fill-A2! (make-A srfi4-type)) transA
+                                (fill-A2! (make-B srfi4-type)) transB
                                 2. (fill-A2! (make-C srfi4-type))))
 ; @TODO Conj, etc. for c32/c64.
                    (list CblasTrans CblasNoTrans)))
