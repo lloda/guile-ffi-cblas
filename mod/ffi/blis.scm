@@ -93,7 +93,7 @@
 (export BLIS_NO_CONJUGATE BLIS_CONJUGATE)
 
 ; -----------------------------
-; alpha * sum_k(A_{ik}*B_{kj}) + beta * C_{ij} -> C_{ij}: sgemm dgemm cgemm zgemm
+; alpha * sum_k(A_{ik}*B_{kj}) + beta * C_{ij} -> C_{ij}
 ; -----------------------------
 
 (define-syntax define-gemm
@@ -153,7 +153,7 @@
 (export sgemm dgemm cgemm zgemm)
 
 ; -----------------------------
-; alpha*sum_j(A_{ij} * X_j) + beta*Y_i -> Y_i: sgemv dgemv cgemv zgemv
+; alpha*sum_j(A_{ij} * X_j) + beta*Y_i -> Y_i
 ; -----------------------------
 
 (define-syntax define-gemv
@@ -206,3 +206,56 @@
 (export bli_sgemv bli_dgemv bli_cgemv bli_zgemv)
 (export sgemv! dgemv! cgemv! zgemv!)
 (export sgemv dgemv cgemv zgemv)
+
+; -----------------------------
+; alpha*x_i*y_j + A_{i, j} -> A_{i, j}
+; -----------------------------
+
+(define-syntax define-ger
+  (lambda (x)
+    (syntax-case x ()
+      ((_ name! name blis-name srfi4-type)
+       (with-syntax ((blis-name-string (symbol->string (syntax->datum (syntax blis-name)))))
+         (syntax
+          (begin
+            (define blis-name (pointer->procedure
+                               void
+                               (dynamic-func blis-name-string libblis)
+                               (list conj_t conj_t dim_t dim_t '* '* inc_t '* inc_t
+                                     '* inc_t inc_t)))
+            (define (name! alpha X conjX Y conjY A)
+              (check-array A 2 srfi4-type)
+              (check-array X 1 srfi4-type)
+              (check-array Y 1 srfi4-type)
+              (let ((M (array-length X))
+                    (N (array-length Y)))
+                (unless (= M (dim A 0)) (throw 'mismatched-XA))
+                (unless (= N (dim A 1)) (throw 'mismatched-YA))
+                (blis-name conjX conjY (array-length X) (array-length Y)
+                           (scalar->blis-arg srfi4-type alpha)
+                           (pointer-to-first X) (stride X 0)
+                           (pointer-to-first Y) (stride Y 0)
+                           (pointer-to-first A) (stride A 0) (stride A 1))))
+            (define (name alpha X conjX Y conjY)
+              (let ((A (make-typed-array srfi4-type *unspecified*
+                                         (array-length X) (array-length Y))))
+                (name! alpha X conjX Y conjY A)
+                A)))))))))
+
+;; void bli_?ger( conj_t  conjx,
+;;                conj_t  conjy,
+;;                dim_t   m,
+;;                dim_t   n,
+;;                ctype*  alpha,
+;;                ctype*  x, inc_t incx,
+;;                ctype*  y, inc_t incy,
+;;                ctype*  a, inc_t rsa, inc_t csa );
+
+(define-ger sger! sger bli_sger 'f32)
+(define-ger dger! dger bli_dger 'f64)
+(define-ger cger! cger bli_cger 'c32)
+(define-ger zger! zger bli_zger 'c64)
+
+(export bli_sger bli_dger bli_cger bli_zger)
+(export sger! dger! cger! zger!)
+(export sger dger cger zger)

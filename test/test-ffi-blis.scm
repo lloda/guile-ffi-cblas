@@ -92,7 +92,7 @@
    (c64 ,zgemm!)))
 
 ; ---------------------------------
-; sgemm dgemm cgemm zgemm
+; sgemv dgemv cgemv zgemv
 ; ---------------------------------
 
 ; alpha*sum_j(A_{ij} * X_j) + beta*Y_i -> Y_i
@@ -106,8 +106,6 @@
          (do ((j 0 (+ j 1))) ((= j N))
            (array-set! Y (+ (array-ref Y i) (* alpha (array-ref A i j) (array-ref X j))) i)))
        Y))))
-
-; alpha * sum_k(A_{ik}*B_{kj}) + beta * C_{ij} -> C_{ij}
 
 (define (test-gemv tag gemv! alpha A transA X conjX beta Y)
   (let ((Y1 (array-copy Y))
@@ -145,6 +143,56 @@
    (c32 ,cgemv!)
    (c64 ,zgemv!)))
 
+; ---------------------------------
+; sger dger cger zger
+; ---------------------------------
+
+; alpha*x_i*y_j + A_{i, j} -> A_{i, j}
+(define (ref-ger! alpha X conjX Y conjY A)
+  (let* ((X (apply-transpose-flag X conjX))
+         (Y (apply-transpose-flag Y conjY))
+         (M (array-length X))
+         (N (array-length Y)))
+    (match (array-dimensions A)
+      ((M N)
+       (do ((i 0 (+ i 1))) ((= i M))
+         (do ((j 0 (+ j 1))) ((= j N))
+           (array-set! A (+ (array-ref A i j) (* alpha (array-ref X i) (array-ref Y j))) i j)))
+       Y))))
+
+(define (test-ger tag ger! alpha X conjX Y conjY A)
+  (let ((A1 (array-copy A))
+        (A2 (array-copy A)))
+    (ger! alpha X conjX Y conjY A1)
+    (ref-ger! alpha X conjX Y conjY A2)
+    ;; (test-approximate-array tag A1 A2 1e-15) ; @TODO  as a single test.
+    (test-begin tag)
+    (test-equal A1 A2)
+    (test-end tag)))
+
+(map
+ (match-lambda
+     ((srfi4-type ger!)
+; @TODO some extra tests with non-square matrices.
+      (for-each
+       (match-lambda ((make-X make-Y make-A conjX conjY)
+                      (test-ger (format #f "ger:~a:~a:~a:~a:~a:~a" srfi4-type (procedure-name make-X)
+                                         (procedure-name make-Y) (procedure-name make-A)
+                                         conjX conjY)
+                                 ger! 3. (fill-A1! (make-X srfi4-type)) conjX
+                                 (fill-A1! (make-Y srfi4-type)) conjY
+                                 (fill-A2! (make-A srfi4-type)))))
+       (apply list-product
+         (list (list make-v-compact make-v-strided make-v-offset make-v-strided-reversed)
+               (list make-v-compact make-v-strided make-v-offset make-v-strided-reversed)
+               (list make-M-c-order make-M-fortran-order make-M-offset
+                     make-M-strided make-M-strided-both make-M-strided-reversed)
+               (list BLIS_NO_CONJUGATE BLIS_CONJUGATE)
+               (list BLIS_NO_CONJUGATE BLIS_CONJUGATE))))))
+ `((f32 ,sger!)
+   (f64 ,dger!)
+   (c32 ,cger!)
+   (c64 ,zger!)))
 
 (unless (zero? (test-runner-fail-count (test-runner-current)))
   (error "FAILED test-ffi-cblas.csm"))
