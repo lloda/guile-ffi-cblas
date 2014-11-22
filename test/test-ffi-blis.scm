@@ -10,6 +10,8 @@
 (import (ffi blis) (srfi srfi-64) (srfi srfi-1) (ice-9 match))
 (include "common.scm")
 
+(set! test-log-to-file #f)
+
 (define (apply-transpose-flag A flag)
   (cond ((or (equal? flag BLIS_NO_TRANSPOSE) (equal? flag BLIS_NO_CONJUGATE)) A)
         ((equal? flag BLIS_TRANSPOSE) (transpose-array A 1 0))

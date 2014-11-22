@@ -10,6 +10,8 @@
 (import (ffi cblas) (srfi srfi-64) (srfi srfi-1) (ice-9 match))
 (include "common.scm")
 
+(set! test-log-to-file #f)
+
 ; ---------------------------------
 ; Test types
 ; ---------------------------------
