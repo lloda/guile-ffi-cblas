@@ -2,3 +2,4 @@
 
 (add-to-load-path (string-append (getcwd) "/mod"))
 (load "test/test-ffi-cblas.scm")
+;; (load "test/test-ffi-blis.scm")

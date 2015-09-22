@@ -1,6 +1,6 @@
 
 ; Access BLIS through Guile's FFI.
-; (c) Daniel Llorens - 2014
+; (c) Daniel Llorens - 2014-2015
 
 ; This library is free software; you can redistribute it and/or modify it under
 ; the terms of the GNU General Public License as published by the Free
@@ -13,10 +13,11 @@
 ; https://code.google.com/p/blis/wiki/BLISAPIQuickReference
 
 ; @TODO As an alternative go through installation.
-(define libblis (dynamic-link (let ((lpath (getenv "GUILE_FFI_CBLAS_LIBBLIS_PATH")))
-                                (if (and lpath (not (string=? lpath "")))
-                                  (string-append lpath file-name-separator-string "libblis")
-                                  "libblis"))))
+(define libblis (dynamic-link (let ((lpath (getenv "GUILE_FFI_CBLAS_LIBBLIS_PATH"))
+                                     (lname (or (getenv "GUILE_FFI_CBLAS_LIBBLIS_NAME") "libblis")))
+                                 (if (and lpath (not (string=? lpath "")))
+                                   (string-append lpath file-name-separator-string lname)
+                                   lname))))
 (dynamic-call "bli_init" libblis)
 
 (define dim_t int64)

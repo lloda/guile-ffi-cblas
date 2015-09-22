@@ -1,6 +1,6 @@
 
 ; Access CBLAS through Guile's FFI.
-; (c) Daniel Llorens - 2014
+; (c) Daniel Llorens - 2014-2015
 
 ; This library is free software; you can redistribute it and/or modify it under
 ; the terms of the GNU General Public License as published by the Free
@@ -11,10 +11,11 @@
 (import (system foreign) (srfi srfi-1) (srfi srfi-11))
 
 ; @TODO As an alternative go through installation.
-(define libcblas (dynamic-link (let ((lpath (getenv "GUILE_FFI_CBLAS_LIBCBLAS_PATH")))
+(define libcblas (dynamic-link (let ((lpath (getenv "GUILE_FFI_CBLAS_LIBCBLAS_PATH"))
+                                     (lname (or (getenv "GUILE_FFI_CBLAS_LIBCBLAS_NAME") "libcblas")))
                                  (if (and lpath (not (string=? lpath "")))
-                                   (string-append lpath file-name-separator-string "libcblas")
-                                   "libcblas"))))
+                                   (string-append lpath file-name-separator-string lname)
+                                   lname))))
 
 (define (check-array A rank type)
   (unless (= rank (array-rank A)) (throw 'bad-rank (array-rank A)))
