@@ -12,7 +12,7 @@
 
 ; https://code.google.com/p/blis/wiki/BLISAPIQuickReference
 
-; @TODO As an alternative go through installation.
+; TODO As an alternative go through installation.
 (define libblis (dynamic-link (let ((lpath (getenv "GUILE_FFI_CBLAS_LIBBLIS_PATH"))
                                      (lname (or (getenv "GUILE_FFI_CBLAS_LIBBLIS_NAME") "libblis")))
                                  (if (and lpath (not (string=? lpath "")))
