@@ -1,6 +1,6 @@
 
 ; Access CBLAS through Guile's FFI.
-; (c) Daniel Llorens - 2014-2015
+; (c) Daniel Llorens - 2014-2015, 2017
 
 ; This library is free software; you can redistribute it and/or modify it under
 ; the terms of the GNU General Public License as published by the Free
@@ -67,7 +67,7 @@
   (list-ref (array-dimensions A) i))
 
 ;; Consider http://wiki.call-cc.org/eggref/4/blas#usage
-;; The three levels would be:
+;; The three variants per binding would be:
 
 ;; 1) ([original library name] ...) ~ (unsafe-xxx! ...) the result of
 ;; pointer->procedure.
@@ -80,6 +80,106 @@
 ;; 3) (name ...) ~ (xxx ...) converts arguments as far as possible. Returns new
 ;; typed arrays.
 
+#|
+LEVEL 1
+
+    Single and Double
+
+        SROTG - setup Givens rotation
+        SROTMG - setup modified Givens rotation
+        SROT - apply Givens rotation
+        SROTM - apply modified Givens rotation
+        SSWAP - swap x and y
+    *   SSCAL - x = a*x
+    *   SCOPY - copy x into y
+    *   SAXPY - y = a*x + y
+    *   SDOT - dot product
+        SDSDOT - dot product with extended precision accumulation
+    *   SNRM2 - Euclidean norm
+    *   SCNRM2- Euclidean norm
+    *   SASUM - sum of absolute values
+        ISAMAX - index of max abs value
+
+    Complex and Double Complex
+
+        CROTG - setup Givens rotation
+        CSROT - apply Givens rotation
+        CSWAP - swap x and y
+    *   CSCAL - x = a*x
+        CSSCAL - x = a*x
+    *   CCOPY - copy x into y
+    *   CAXPY - y = a*x + y
+    *   CDOTU - dot product
+    *   CDOTC - dot product, conjugating the first vector
+    *   SCASUM - sum of absolute values
+        ICAMAX - index of max abs value
+
+LEVEL 2
+
+    Single and Double
+
+    *   SGEMV - matrix vector multiply
+        SGBMV - banded matrix vector multiply
+        SSYMV - symmetric matrix vector multiply
+        SSBMV - symmetric banded matrix vector multiply
+        SSPMV - symmetric packed matrix vector multiply
+        STRMV - triangular matrix vector multiply
+        STBMV - triangular banded matrix vector multiply
+        STPMV - triangular packed matrix vector multiply
+        STRSV - solving triangular matrix problems
+        STBSV - solving triangular banded matrix problems
+        STPSV - solving triangular packed matrix problems
+    *   SGER - performs the rank 1 operation A := alpha*x*y' + A
+        SSYR - performs the symmetric rank 1 operation A := alpha*x*x' + A
+        SSPR - symmetric packed rank 1 operation A := alpha*x*x' + A
+        SSYR2 - performs the symmetric rank 2 operation, A := alpha*x*y' + alpha*y*x' + A
+        SSPR2 - performs the symmetric packed rank 2 operation, A := alpha*x*y' + alpha*y*x' + A
+
+    Complex and Double Complex
+
+    *   CGEMV - matrix vector multiply
+        CGBMV - banded matrix vector multiply
+        CHEMV - hermitian matrix vector multiply
+        CHBMV - hermitian banded matrix vector multiply
+        CHPMV - hermitian packed matrix vector multiply
+        CTRMV - triangular matrix vector multiply
+        CTBMV - triangular banded matrix vector multiply
+        CTPMV - triangular packed matrix vector multiply
+        CTRSV - solving triangular matrix problems
+        CTBSV - solving triangular banded matrix problems
+        CTPSV - solving triangular packed matrix problems
+    *   CGERU - performs the rank 1 operation A := alpha*x*y' + A
+    *   CGERC - performs the rank 1 operation A := alpha*x*conjg( y' ) + A
+        CHER - hermitian rank 1 operation A := alpha*x*conjg(x') + A
+        CHPR - hermitian packed rank 1 operation A := alpha*x*conjg( x' ) + A
+        CHER2 - hermitian rank 2 operation
+        CHPR2 - hermitian packed rank 2 operation
+
+LEVEL 3
+
+    Single and Double
+
+    *   SGEMM - matrix matrix multiply
+        SSYMM - symmetric matrix matrix multiply
+        SSYRK - symmetric rank-k update to a matrix
+        SSYR2K - symmetric rank-2k update to a matrix
+        STRMM - triangular matrix matrix multiply
+        STRSM - solving triangular matrix with multiple right hand sides
+
+    Complex and Double Complex
+
+    *   CGEMM - matrix matrix multiply
+        CSYMM - symmetric matrix matrix multiply
+        CHEMM - hermitian matrix matrix multiply
+        CSYRK - symmetric rank-k update to a matrix
+        CHERK - hermitian rank-k update to a matrix
+        CSYR2K - symmetric rank-2k update to a matrix
+        CHER2K - hermitian rank-2k update to a matrix
+        CTRMM - triangular matrix matrix multiply
+        CTRSM - solving triangular matrix with multiple right hand sides
+|#
+
+
 ; -----------------------------
 ; sum_i(a_i * b_i): sdot ddot cdotu cdotc zdotu zdotc
 ; -----------------------------
@@ -135,6 +235,38 @@
 (export cdotu cdotc zdotu zdotc)
 (export cblas_cdotu_sub cblas_cdotc_sub cblas_zdotu_sub cblas_zdotc_sub)
 
+
+; -----------------------------
+; x -> y: scopy dcopy ccopy zcopy
+; -----------------------------
+
+; @TODO pointer-to-this-value support in the ffi, for old C decls that take double * for complex.
+(define-syntax define-copy
+  (lambda (x)
+    (syntax-case x ()
+      ((_ name cblas-name srfi4-type)
+       (with-syntax ((cblas-name-string (symbol->string (syntax->datum (syntax cblas-name)))))
+         (syntax
+          (begin
+            (define cblas-name (pointer->procedure void
+                                                   (dynamic-func cblas-name-string libcblas)
+                                                   (list int '* int '* int)))
+            (define (name X Y)
+              (check-2-arrays X Y 1 srfi4-type)
+              (cblas-name (array-length X)
+                          (pointer-to-first X) (stride X 0)
+                          (pointer-to-first Y) (stride Y 0))))))))))
+
+; void cblas_scopy (const int N, const float *X, const int incX, float *Y, const int incY)
+(define-copy scopy! cblas_scopy 'f32)
+(define-copy dcopy! cblas_dcopy 'f64)
+(define-copy ccopy! cblas_ccopy 'c32)
+(define-copy zcopy! cblas_zcopy 'c64)
+
+(export cblas_scopy cblas_dcopy cblas_ccopy cblas_zcopy)
+(export scopy! dcopy! ccopy! zcopy!)
+
+
 ; -----------------------------
 ; a*x + y -> y: saxpy daxpy caxpy zaxpy
 ; -----------------------------
@@ -165,6 +297,7 @@
 (export cblas_saxpy cblas_daxpy cblas_caxpy cblas_zaxpy)
 (export saxpy! daxpy! caxpy! zaxpy!)
 
+
 ; -----------------------------
 ; alpha * X_i -> X_i: sscal cscal dscal zscal
 ; -----------------------------
@@ -194,6 +327,7 @@
 (export cblas_sscal cblas_dscal cblas_cscal cblas_zscal)
 (export sscal! dscal! cscal! zscal!)
 
+
 ; -----------------------------
 ; sqrt(sum_i(conj(X_i)*X_i)): snrm2 dnrm2 cnrm2 znrm2
 ; sum('absolute value'(X_i))): sasum dasum casum zasum
@@ -234,6 +368,7 @@
 (export cblas_sasum cblas_dasum cblas_scasum cblas_dzasum)
 (export sasum dasum casum zasum)
 
+
 ; -----------------------------
 ; i | max_j('absolute value'(X_j)) = X_i: isamax idamax icamax izamax
 ; 'absolute value' is |Re|+|Im| in the complex case; cf LawsonEtAl1979,
@@ -264,6 +399,7 @@
 (export cblas_isamax cblas_idamax cblas_icamax cblas_izamax)
 (export isamax idamax icamax izamax)
 
+
 ; -----------------------------
 ; alpha*x_i*(maybe conj)(y_j) + A_{i, j} -> A_{i, j}: sger dger cgeru cgerc zgeru cgerc
 ; -----------------------------
@@ -309,6 +445,7 @@
 (export cblas_sger cblas_dger cblas_cgeru cblas_cgerc cblas_zgeru cblas_zgerc)
 (export sger! dger! cgeru! cgerc! zgeru! zgerc!)
 
+
 ; -----------------------------
 ; alpha*sum_j(A_{ij} * X_j) + beta*Y_i -> Y_i: sgemv dgemv cgemv zgemv
 ; -----------------------------
@@ -399,6 +536,7 @@
 (export cblas_dgemv cblas_sgemv cblas_zgemv cblas_cgemv)
 (export dgemv! sgemv! zgemv! cgemv!)
 
+
 ; -----------------------------
 ; alpha * sum_k(A_{ik}*B_{kj}) + beta * C_{ij} -> C_{ij}: sgemm dgemm cgemm zgemm
 ; -----------------------------

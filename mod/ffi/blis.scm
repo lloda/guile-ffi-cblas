@@ -61,6 +61,7 @@
 (define (dim A i)
   (list-ref (array-dimensions A) i))
 
+
 ; -----------------------------
 ; BLIS flags
 ; -----------------------------
@@ -93,6 +94,7 @@
 
 (export BLIS_NO_CONJUGATE BLIS_CONJUGATE)
 
+
 ; -----------------------------
 ; alpha * sum_k(A_{ik}*B_{kj}) + beta * C_{ij} -> C_{ij}
 ; -----------------------------
@@ -153,6 +155,7 @@
 (export sgemm! dgemm! cgemm! zgemm!)
 (export sgemm dgemm cgemm zgemm)
 
+
 ; -----------------------------
 ; alpha*sum_j(A_{ij} * X_j) + beta*Y_i -> Y_i
 ; -----------------------------
@@ -208,6 +211,7 @@
 (export sgemv! dgemv! cgemv! zgemv!)
 (export sgemv dgemv cgemv zgemv)
 
+
 ; -----------------------------
 ; alpha*x_i*y_j + A_{i, j} -> A_{i, j}
 ; -----------------------------

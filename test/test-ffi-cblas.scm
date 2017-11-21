@@ -1,6 +1,6 @@
 
 ; Tests for (ffi cblas).
-; (c) Daniel Llorens - 2014
+; (c) Daniel Llorens - 2014, 2017
 
 ; This library is free software; you can redistribute it and/or modify it under
 ; the terms of the GNU General Public License as published by the Free
@@ -22,6 +22,7 @@
                   test expected)
   (test-end tag))
 
+
 ; ---------------------------------
 ; sdot ddot cdotc cdotu zdotc zdotu
 ; ---------------------------------
@@ -55,6 +56,7 @@
    (c32 ,cdotu ,dotu-step)
    (c32 ,cdotu ,dotu-step)))
 
+
 ; ---------------------------------
 ; saxpy daxpy caxpy zaxpy
 ; ---------------------------------
@@ -91,6 +93,40 @@
    (c64 ,zaxpy!)
    (c32 ,caxpy!)))
 
+
+; ---------------------------------
+; scopy dcopy ccopy zcopy
+; ---------------------------------
+
+(define (test-copy srfi4-type copy! make-A make-B)
+  (let* ((tag (format #f "~a:~a" (procedure-name make-A) (procedure-name make-B)))
+         (case-name (format #f "~a, ~a" (procedure-name copy!) tag))
+         (A (fill-A1! (make-A srfi4-type)))
+         (B (fill-B1! (make-B srfi4-type))))
+    (let ((Alist (array->list A))
+          (Blist (array->list B)))
+      (test-begin case-name)
+      (copy! A B)
+      (test-equal B (list->typed-array srfi4-type 1 Alist))
+      (test-equal A (list->typed-array srfi4-type 1 Alist))
+      (test-end case-name))))
+
+(map
+ (match-lambda
+     ((srfi4-type copy!)
+      (for-each
+       (lambda (make-X)
+         (for-each
+          (lambda (make-Y)
+            (test-copy srfi4-type copy! make-X make-Y))
+          (list make-v-compact make-v-offset make-v-strided)))
+       (list make-v-compact make-v-offset make-v-strided))))
+ `((f64 ,dcopy!)
+   (f32 ,scopy!)
+   (c64 ,zcopy!)
+   (c32 ,ccopy!)))
+
+
 ; ---------------------------------
 ; sgemv dgemv cgemv zgemv
 ; ---------------------------------
@@ -140,26 +176,32 @@
    (c64 ,zgemv!)
    (c32 ,cgemv!)))
 
+
 ; ---------------------------------
 ; @TODO snrm2, dnrm2, cnrm2, znrm2
 ; ---------------------------------
 
+
 ; ---------------------------------
 ; @TODO sasum, dasum, casum, zasum
 ; ---------------------------------
 
+
 ; ---------------------------------
 ; @TODO sscal, dscal, cscal, zscal
 ; ---------------------------------
 
+
 ; ---------------------------------
 ; @TODO sger, dger, cgeru, cgerc, zgeru, zgerc
 ; ---------------------------------
 
+
 ; ---------------------------------
 ; @TODO isamax idamax icamax izamax
 ; ---------------------------------
 
+
 ; ---------------------------------
 ; sgemm dgemm cgemm zgemm
 ; ---------------------------------
