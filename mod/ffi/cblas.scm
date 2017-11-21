@@ -89,7 +89,7 @@ LEVEL 1
         SROTMG - setup modified Givens rotation
         SROT - apply Givens rotation
         SROTM - apply modified Givens rotation
-        SSWAP - swap x and y
+    *   SSWAP - swap x and y
     *   SSCAL - x = a*x
     *   SCOPY - copy x into y
     *   SAXPY - y = a*x + y
@@ -104,7 +104,7 @@ LEVEL 1
 
         CROTG - setup Givens rotation
         CSROT - apply Givens rotation
-        CSWAP - swap x and y
+    *   CSWAP - swap x and y
     *   CSCAL - x = a*x
     *   CSSCAL - x = a*x
     *   CCOPY - copy x into y
@@ -265,6 +265,37 @@ LEVEL 3
 
 (export cblas_scopy cblas_dcopy cblas_ccopy cblas_zcopy)
 (export scopy! dcopy! ccopy! zcopy!)
+
+
+; -----------------------------
+; x -> y: sswap dswap cswap zswap
+; -----------------------------
+
+; @TODO pointer-to-this-value support in the ffi, for old C decls that take double * for complex.
+(define-syntax define-swap
+  (lambda (x)
+    (syntax-case x ()
+      ((_ name cblas-name srfi4-type)
+       (with-syntax ((cblas-name-string (symbol->string (syntax->datum (syntax cblas-name)))))
+         (syntax
+          (begin
+            (define cblas-name (pointer->procedure void
+                                                   (dynamic-func cblas-name-string libcblas)
+                                                   (list int '* int '* int)))
+            (define (name X Y)
+              (check-2-arrays X Y 1 srfi4-type)
+              (cblas-name (array-length X)
+                          (pointer-to-first X) (stride X 0)
+                          (pointer-to-first Y) (stride Y 0))))))))))
+
+; void cblas_sswap (const int N, const float *X, const int incX, float *Y, const int incY)
+(define-swap sswap! cblas_sswap 'f32)
+(define-swap dswap! cblas_dswap 'f64)
+(define-swap cswap! cblas_cswap 'c32)
+(define-swap zswap! cblas_zswap 'c64)
+
+(export cblas_sswap cblas_dswap cblas_cswap cblas_zswap)
+(export sswap! dswap! cswap! zswap!)
 
 
 ; -----------------------------

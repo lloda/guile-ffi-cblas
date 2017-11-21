@@ -49,13 +49,14 @@ example, negative strides require specific handling for **CBLAS** and are not
 supported yet. **BLIS** doesn't mess up negative strides and avoids this
 problem.
 
-Only the following functions are covered at the moment:
+The following functions are covered at the moment:
 
 ---
 
 #### BLAS level 1
 
 * sscal dscal cscal zscal csscal zdscal
+* sswap dswap cswap zswap
 * scopy dcopy ccopy zcopy
 * saxpy daxpy caxpy zaxpy
 * sdot ddot cdotu zdotu cdotc zdotc

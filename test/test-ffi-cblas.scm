@@ -128,6 +128,39 @@
 
 
 ; ---------------------------------
+; scopy dcopy ccopy zcopy
+; ---------------------------------
+
+(define (test-swap srfi4-type swap! make-A make-B)
+  (let* ((tag (format #f "~a:~a" (procedure-name make-A) (procedure-name make-B)))
+         (case-name (format #f "~a, ~a" (procedure-name swap!) tag))
+         (A (fill-A1! (make-A srfi4-type)))
+         (B (fill-B1! (make-B srfi4-type))))
+    (let ((Alist (array->list A))
+          (Blist (array->list B)))
+      (test-begin case-name)
+      (swap! A B)
+      (test-equal B (list->typed-array srfi4-type 1 Alist))
+      (test-equal A (list->typed-array srfi4-type 1 Blist))
+      (test-end case-name))))
+
+(map
+ (match-lambda
+     ((srfi4-type swap!)
+      (for-each
+       (lambda (make-X)
+         (for-each
+          (lambda (make-Y)
+            (test-swap srfi4-type swap! make-X make-Y))
+          (list make-v-compact make-v-offset make-v-strided)))
+       (list make-v-compact make-v-offset make-v-strided))))
+ `((f64 ,dswap!)
+   (f32 ,sswap!)
+   (c64 ,zswap!)
+   (c32 ,cswap!)))
+
+
+; ---------------------------------
 ; sgemv dgemv cgemv zgemv
 ; ---------------------------------
 
