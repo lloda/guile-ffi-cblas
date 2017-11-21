@@ -188,7 +188,7 @@
 
 
 ; ---------------------------------
-; @TODO sscal, dscal, cscal, zscal
+; @TODO sscal, dscal, cscal, zscal, csscal, zdscal
 ; ---------------------------------
 
 

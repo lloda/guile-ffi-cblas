@@ -55,7 +55,7 @@ Only the following functions are covered at the moment:
 
 #### BLAS level 1
 
-* sscal dscal cscal zscal
+* sscal dscal cscal zscal csscal zdscal
 * scopy dcopy ccopy zcopy
 * saxpy daxpy caxpy zaxpy
 * sdot ddot cdotu zdotu cdotc zdotc

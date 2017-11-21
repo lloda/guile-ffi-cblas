@@ -106,7 +106,7 @@ LEVEL 1
         CSROT - apply Givens rotation
         CSWAP - swap x and y
     *   CSCAL - x = a*x
-        CSSCAL - x = a*x
+    *   CSSCAL - x = a*x
     *   CCOPY - copy x into y
     *   CAXPY - y = a*x + y
     *   CDOTU - dot product
@@ -299,33 +299,35 @@ LEVEL 3
 
 
 ; -----------------------------
-; alpha * X_i -> X_i: sscal cscal dscal zscal
+; alpha * X_i -> X_i: sscal cscal dscal zscal csscal zdscal
 ; -----------------------------
 
 (define-syntax define-scal
   (lambda (x)
     (syntax-case x ()
-      ((_ name cblas-name srfi4-type)
+      ((_ name cblas-name srfi4-type scalar-srfi4-type)
        (with-syntax ((cblas-name-string (symbol->string (syntax->datum (syntax cblas-name)))))
          (syntax
           (begin
             (define cblas-name (pointer->procedure
                                 void
                                 (dynamic-func cblas-name-string libcblas)
-                                (list int (srfi4-type->type srfi4-type) '* int)))
+                                (list int (srfi4-type->type scalar-srfi4-type) '* int)))
             (define (name alpha X)
               (check-array X 1 srfi4-type)
-              (cblas-name (array-length X) (scalar->cblas-arg srfi4-type alpha)
+              (cblas-name (array-length X) (scalar->cblas-arg scalar-srfi4-type alpha)
                           (pointer-to-first X) (stride X 0))))))))))
 
 ; void cblas_sscal (const int N, const float alpha, const float *X, const int incX)
-(define-scal sscal! cblas_sscal 'f32)
-(define-scal dscal! cblas_dscal 'f64)
-(define-scal cscal! cblas_cscal 'c32)
-(define-scal zscal! cblas_zscal 'c64)
+(define-scal sscal! cblas_sscal 'f32 'f32)
+(define-scal dscal! cblas_dscal 'f64 'f64)
+(define-scal cscal! cblas_cscal 'c32 'c32)
+(define-scal zscal! cblas_zscal 'c64 'c64)
+(define-scal csscal! cblas_csscal 'c32 'f32)
+(define-scal zdscal! cblas_zdscal 'c64 'f64)
 
-(export cblas_sscal cblas_dscal cblas_cscal cblas_zscal)
-(export sscal! dscal! cscal! zscal!)
+(export cblas_sscal cblas_dscal cblas_cscal cblas_zscal cblas_csscal cblas_zdscal)
+(export sscal! dscal! cscal! zscal! csscal! zdscal!)
 
 
 ; -----------------------------
