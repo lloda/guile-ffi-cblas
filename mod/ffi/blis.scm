@@ -151,9 +151,9 @@
 (define-gemm cgemm! cgemm bli_cgemm 'c32)
 (define-gemm zgemm! zgemm bli_zgemm 'c64)
 
-(export bli_sgemm bli_dgemm bli_cgemm bli_zgemm)
-(export sgemm! dgemm! cgemm! zgemm!)
-(export sgemm dgemm cgemm zgemm)
+(export bli_sgemm bli_dgemm bli_cgemm bli_zgemm
+        sgemm! dgemm! cgemm! zgemm!
+        sgemm dgemm cgemm zgemm)
 
 
 ; -----------------------------
@@ -207,9 +207,9 @@
 (define-gemv cgemv! cgemv bli_cgemv 'c32)
 (define-gemv zgemv! zgemv bli_zgemv 'c64)
 
-(export bli_sgemv bli_dgemv bli_cgemv bli_zgemv)
-(export sgemv! dgemv! cgemv! zgemv!)
-(export sgemv dgemv cgemv zgemv)
+(export bli_sgemv bli_dgemv bli_cgemv bli_zgemv
+        sgemv! dgemv! cgemv! zgemv!
+        sgemv dgemv cgemv zgemv)
 
 
 ; -----------------------------
@@ -261,6 +261,6 @@
 (define-ger cger! cger bli_cger 'c32)
 (define-ger zger! zger bli_zger 'c64)
 
-(export bli_sger bli_dger bli_cger bli_zger)
-(export sger! dger! cger! zger!)
-(export sger dger cger zger)
+(export bli_sger bli_dger bli_cger bli_zger
+        sger! dger! cger! zger!
+        sger dger cger zger)

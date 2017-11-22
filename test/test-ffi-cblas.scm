@@ -24,37 +24,38 @@
 
 
 ; ---------------------------------
-; sdot ddot cdotc cdotu zdotc zdotu
+; isamax idamax icamax izamax
 ; ---------------------------------
 
-(define dotc-step (lambda (a b c) (+ c (* (conj a) b))))
-(define dotu-step (lambda (a b c) (+ c (* a b))))
+(define (list-iamax a)
+  (cdr
+   (fold (lambda (a i mi)
+           (let ((m (+ (magnitude (real-part a)) (magnitude (imag-part a)))))
+             (if (> m (car mi))
+               (cons m i)
+               mi)))
+         (cons -inf.0 -1)
+         a
+         (iota (length a)))))
 
-(define (test-dot srfi4-type dot dot-step make-A make-B)
-  (let* ((tag (format #f "~a:~a" (procedure-name make-A) (procedure-name make-B)))
-         (case-name (format #f "~a, ~a" (procedure-name dot) tag))
-         (A (fill-A1! (make-A srfi4-type)))
-         (B (fill-B1! (make-B srfi4-type))))
+(define (test-iamax srfi4-type iamax make-A)
+  (let* ((tag (format #f "~a" (procedure-name make-A)))
+         (case-name (format #f "~a, ~a" (procedure-name iamax) tag))
+         (A (fill-A1! (make-A srfi4-type))))
     (test-begin case-name)
-    (test-equal (dot A B) (fold dot-step 0. (array->list A) (array->list B)))
+    (test-equal (iamax A) (list-iamax (array->list A)))
     (test-end case-name)))
 
-(map
- (match-lambda
-     ((srfi4-type dot dot-step)
-      (for-each
-       (lambda (make-X)
-         (for-each
-          (lambda (make-Y)
-            (test-dot srfi4-type dot dot-step make-X make-Y))
-          (list make-v-compact make-v-offset make-v-strided)))
-       (list make-v-compact make-v-offset make-v-strided))))
- `((f64 ,ddot ,dotu-step)
-   (f32 ,sdot ,dotu-step)
-   (c64 ,zdotc ,dotc-step)
-   (c64 ,zdotu ,dotu-step)
-   (c32 ,cdotu ,dotu-step)
-   (c32 ,cdotu ,dotu-step)))
+(map (match-lambda
+       ((srfi4-type iamax)
+        (for-each
+            (lambda (make-X)
+              (test-iamax srfi4-type iamax make-X))
+          (list make-v-compact make-v-offset make-v-strided))))
+  `((f64 ,idamax)
+    (f32 ,isamax)
+    (c64 ,izamax)
+    (c32 ,icamax)))
 
 
 ; ---------------------------------

@@ -10,7 +10,7 @@
 (define-module (ffi cblas))
 (import (system foreign) (srfi srfi-1) (srfi srfi-11))
 
-; @TODO As an alternative go through installation.
+; TODO As an alternative go through installation.
 (define libcblas (dynamic-link (let ((lpath (getenv "GUILE_FFI_CBLAS_LIBCBLAS_PATH"))
                                      (lname (or (getenv "GUILE_FFI_CBLAS_LIBCBLAS_NAME") "libcblas")))
                                  (if (and lpath (not (string=? lpath "")))
@@ -98,7 +98,7 @@ LEVEL 1
     *   SNRM2 - Euclidean norm
     *   SCNRM2- Euclidean norm
     *   SASUM - sum of absolute values
-        ISAMAX - index of max abs value
+    *   ISAMAX - index of max abs value
 
     Complex and Double Complex
 
@@ -112,7 +112,7 @@ LEVEL 1
     *   CDOTU - dot product
     *   CDOTC - dot product, conjugating the first vector
     *   SCASUM - sum of absolute values
-        ICAMAX - index of max abs value
+    *   ICAMAX - index of max abs value
 
 LEVEL 2
 
@@ -181,6 +181,36 @@ LEVEL 3
 
 
 ; -----------------------------
+; x -> i: isamax idamax icamax izamax
+; -----------------------------
+
+; TODO pointer-to-this-value support in the ffi, for old C decls that take double * for complex.
+(define-syntax define-iamax
+  (lambda (x)
+    (syntax-case x ()
+      ((_ name cblas-name srfi4-type)
+       (with-syntax ((cblas-name-string (symbol->string (syntax->datum (syntax cblas-name)))))
+         (syntax
+          (begin
+            (define cblas-name (pointer->procedure int
+                                                   (dynamic-func cblas-name-string libcblas)
+                                                   (list int '* int)))
+            (define (name X)
+              (check-array X 1 srfi4-type)
+              (cblas-name (array-length X)
+                          (pointer-to-first X) (stride X 0))))))))))
+
+; int cblas_isamax (const int N, const float *X, const int incX)
+(define-iamax isamax cblas_isamax 'f32)
+(define-iamax idamax cblas_idamax 'f64)
+(define-iamax icamax cblas_icamax 'c32)
+(define-iamax izamax cblas_izamax 'c64)
+
+(export cblas_isamax cblas_idamax cblas_icamax cblas_izamax
+        isamax idamax icamax izamax)
+
+
+; -----------------------------
 ; sum_i(a_i * b_i): sdot ddot cdotu cdotc zdotu zdotc
 ; -----------------------------
 
@@ -204,8 +234,8 @@ LEVEL 3
 (define-dot-real sdot cblas_sdot 'f32)
 (define-dot-real ddot cblas_ddot 'f64)
 
-(export cblas_sdot cblas_ddot)
-(export sdot ddot)
+(export cblas_sdot cblas_ddot
+        sdot ddot)
 
 (define-syntax define-dot-complex
   (lambda (x)
@@ -232,15 +262,15 @@ LEVEL 3
 (define-dot-complex zdotu cblas_zdotu_sub 'c64)
 (define-dot-complex zdotc cblas_zdotc_sub 'c64)
 
-(export cdotu cdotc zdotu zdotc)
-(export cblas_cdotu_sub cblas_cdotc_sub cblas_zdotu_sub cblas_zdotc_sub)
+(export cdotu cdotc zdotu zdotc
+        cblas_cdotu_sub cblas_cdotc_sub cblas_zdotu_sub cblas_zdotc_sub)
 
 
 ; -----------------------------
 ; x -> y: scopy dcopy ccopy zcopy
 ; -----------------------------
 
-; @TODO pointer-to-this-value support in the ffi, for old C decls that take double * for complex.
+; TODO pointer-to-this-value support in the ffi, for old C decls that take double * for complex.
 (define-syntax define-copy
   (lambda (x)
     (syntax-case x ()
@@ -263,15 +293,15 @@ LEVEL 3
 (define-copy ccopy! cblas_ccopy 'c32)
 (define-copy zcopy! cblas_zcopy 'c64)
 
-(export cblas_scopy cblas_dcopy cblas_ccopy cblas_zcopy)
-(export scopy! dcopy! ccopy! zcopy!)
+(export cblas_scopy cblas_dcopy cblas_ccopy cblas_zcopy
+        scopy! dcopy! ccopy! zcopy!)
 
 
 ; -----------------------------
 ; x -> y: sswap dswap cswap zswap
 ; -----------------------------
 
-; @TODO pointer-to-this-value support in the ffi, for old C decls that take double * for complex.
+; TODO pointer-to-this-value support in the ffi, for old C decls that take double * for complex.
 (define-syntax define-swap
   (lambda (x)
     (syntax-case x ()
@@ -294,15 +324,15 @@ LEVEL 3
 (define-swap cswap! cblas_cswap 'c32)
 (define-swap zswap! cblas_zswap 'c64)
 
-(export cblas_sswap cblas_dswap cblas_cswap cblas_zswap)
-(export sswap! dswap! cswap! zswap!)
+(export cblas_sswap cblas_dswap cblas_cswap cblas_zswap
+        sswap! dswap! cswap! zswap!)
 
 
 ; -----------------------------
 ; a*x + y -> y: saxpy daxpy caxpy zaxpy
 ; -----------------------------
 
-; @TODO pointer-to-this-value support in the ffi, for old C decls that take double * for complex.
+; TODO pointer-to-this-value support in the ffi, for old C decls that take double * for complex.
 (define-syntax define-axpy
   (lambda (x)
     (syntax-case x ()
@@ -325,8 +355,8 @@ LEVEL 3
 (define-axpy caxpy! cblas_caxpy 'c32)
 (define-axpy zaxpy! cblas_zaxpy 'c64)
 
-(export cblas_saxpy cblas_daxpy cblas_caxpy cblas_zaxpy)
-(export saxpy! daxpy! caxpy! zaxpy!)
+(export cblas_saxpy cblas_daxpy cblas_caxpy cblas_zaxpy
+        saxpy! daxpy! caxpy! zaxpy!)
 
 
 ; -----------------------------
@@ -357,8 +387,8 @@ LEVEL 3
 (define-scal csscal! cblas_csscal 'c32 'f32)
 (define-scal zdscal! cblas_zdscal 'c64 'f64)
 
-(export cblas_sscal cblas_dscal cblas_cscal cblas_zscal cblas_csscal cblas_zdscal)
-(export sscal! dscal! cscal! zscal! csscal! zdscal!)
+(export cblas_sscal cblas_dscal cblas_cscal cblas_zscal cblas_csscal cblas_zdscal
+        sscal! dscal! cscal! zscal! csscal! zdscal!)
 
 
 ; -----------------------------
@@ -389,8 +419,8 @@ LEVEL 3
 (define-nrm2/asum cnrm2 cblas_scnrm2 'c32)
 (define-nrm2/asum znrm2 cblas_dznrm2 'c64)
 
-(export cblas_snrm2 cblas_dnrm2 cblas_scnrm2 cblas_dznrm2)
-(export snrm2 dnrm2 cnrm2 znrm2)
+(export cblas_snrm2 cblas_dnrm2 cblas_scnrm2 cblas_dznrm2
+        snrm2 dnrm2 cnrm2 znrm2)
 
 ; float cblas_sasum2 (const int N, const float *X, const int incX)
 (define-nrm2/asum sasum cblas_sasum 'f32)
@@ -398,8 +428,8 @@ LEVEL 3
 (define-nrm2/asum casum cblas_scasum 'c32)
 (define-nrm2/asum zasum cblas_dzasum 'c64)
 
-(export cblas_sasum cblas_dasum cblas_scasum cblas_dzasum)
-(export sasum dasum casum zasum)
+(export cblas_sasum cblas_dasum cblas_scasum cblas_dzasum
+        sasum dasum casum zasum)
 
 
 ; -----------------------------
@@ -429,8 +459,8 @@ LEVEL 3
 (define-iamax icamax cblas_icamax 'c32)
 (define-iamax izamax cblas_izamax 'c64)
 
-(export cblas_isamax cblas_idamax cblas_icamax cblas_izamax)
-(export isamax idamax icamax izamax)
+(export cblas_isamax cblas_idamax cblas_icamax cblas_izamax
+        isamax idamax icamax izamax)
 
 
 ; -----------------------------
@@ -475,8 +505,8 @@ LEVEL 3
 (define-ger zgeru! cblas_zgeru 'c64)
 (define-ger zgerc! cblas_zgerc 'c64)
 
-(export cblas_sger cblas_dger cblas_cgeru cblas_cgerc cblas_zgeru cblas_zgerc)
-(export sger! dger! cgeru! cgerc! zgeru! zgerc!)
+(export cblas_sger cblas_dger cblas_cgeru cblas_cgerc cblas_zgeru cblas_zgerc
+        sger! dger! cgeru! cgerc! zgeru! zgerc!)
 
 
 ; -----------------------------
@@ -566,8 +596,8 @@ LEVEL 3
 (define-gemv zgemv! cblas_zgemv 'c64)
 (define-gemv cgemv! cblas_cgemv 'c32)
 
-(export cblas_dgemv cblas_sgemv cblas_zgemv cblas_cgemv)
-(export dgemv! sgemv! zgemv! cgemv!)
+(export cblas_dgemv cblas_sgemv cblas_zgemv cblas_cgemv
+        dgemv! sgemv! zgemv! cgemv!)
 
 
 ; -----------------------------
@@ -619,5 +649,5 @@ LEVEL 3
 (define-gemm cgemm! cblas_cgemm 'c32)
 (define-gemm zgemm! cblas_zgemm 'c64)
 
-(export cblas_sgemm cblas_dgemm cblas_cgemm cblas_zgemm)
-(export sgemm! dgemm! cgemm! zgemm!)
+(export cblas_sgemm cblas_dgemm cblas_cgemm cblas_zgemm
+        sgemm! dgemm! cgemm! zgemm!)

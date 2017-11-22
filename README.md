@@ -1,3 +1,4 @@
+
 **guile-ffi-cblas** is a set of Guile FFI bindings for two libraries of linear
 algebra subprograms, **CBLAS** and **BLIS**. They provide operations such as
 vector dot product, matrix-vector product, matrix-matrix product, and so on.
@@ -25,31 +26,32 @@ itself with `GUILE_FFI_CBLAS_LIBCBLAS_NAME` (or
 There are up to three bindings for each function, here using `ZGEMM` as an
 example:
 
-- `cblas-zgemm!` is the raw C function by `pointer->procedure`. Don't
+- `cblas_zgemm` (raw binding): the raw C function by `pointer->procedure`. Don't
   use this if you aren't familiar with Guile's FFI.
 
-- `zgemm!` takes array arguments of type `'c64` and operates by
+- `zgemm!` (typed binding): takes array arguments of type `'c64` and operates by
   effect, without making copies. All the arguments must be properly sized. The
   return value is unspecified.
 
-- `zgemm` takes array arguments of compatible types and returns a
-  newly constructed array. The arguments will be converted as necessary, which
-  may result in copies.  The returned array will be of `'c64` type.
+- `zgemm` (functional binding): takes array arguments of compatible types and
+  returns a newly constructed array. The arguments will be converted as
+  necessary, which may result in copies.  The returned array will be of `'c64`
+  type.
 
 In principle, for the last two bindings, you don't need to care whether your
 array is row-major or column-major or what the strides are. The bindings will
 extract the required stride arguments from the array descriptors. However, since
 **CBLAS** doesn't support arbitrary strides (e.g. it only supports a column
 stride for matrix arguments, assuming column-major order), some array arguments
-will cause the level 2 function to fail, or result in extra copies with the
-level 3 function. **BLIS** doesn't have this problem.
+will cause the typed binding to fail, or result in extra copies with the
+functional binding. **BLIS** doesn't have this problem.
 
 Note that these bindings are a work in progress and that there are bugs. For
 example, negative strides require specific handling for **CBLAS** and are not
-supported yet. **BLIS** doesn't mess up negative strides and avoids this
-problem.
+supported yet. Once again, **BLIS** doesn't mess up negative strides, so it avoids
+this problem.
 
-The following functions are covered at the moment:
+The following functions are covered:
 
 ---
 
@@ -62,6 +64,7 @@ The following functions are covered at the moment:
 * sdot ddot cdotu zdotu cdotc zdotc
 * snrm2 dnrm2 scnrm2 dznrm2
 * sasum dasum scasum dzasum
+* isamax idamax icamax izamax
 
 #### BLAS level 2
 
