@@ -103,37 +103,36 @@
   (lambda (x)
     (syntax-case x ()
       ((_ name! name blis-name srfi4-type)
-       (with-syntax ((blis-name-string (symbol->string (syntax->datum (syntax blis-name)))))
-         (syntax
-          (begin
-            (define blis-name (pointer->procedure
-                               void
-                               (dynamic-func blis-name-string libblis)
-                               (list trans_t trans_t dim_t dim_t dim_t
-                                     '* '* inc_t inc_t '* inc_t inc_t
-                                     '* '* inc_t inc_t)))
-            (define (name! alpha A transA B transB beta C)
-              (check-array A 2 srfi4-type)
-              (check-array B 2 srfi4-type)
-              (check-array C 2 srfi4-type)
-              (let ((M (dim C 0))
-                    (N (dim C 1))
-                    (K (dim A (if (tr? transA) 0 1))))
-                (unless (= M (dim A (if (tr? transA) 1 0))) (throw 'mismatched-CA))
-                (unless (= N (dim B (if (tr? transB) 0 1))) (throw 'mismatched-CB))
-                (unless (= K (dim B (if (tr? transB) 1 0))) (throw 'mismatched-AB))
-                (blis-name transA transB M N K
-                           (scalar->blis-arg srfi4-type alpha)
-                           (pointer-to-first A) (stride A 0) (stride A 1)
-                           (pointer-to-first B) (stride B 0) (stride B 1)
-                           (scalar->blis-arg srfi4-type beta)
-                           (pointer-to-first C) (stride C 0) (stride C 1))))
-            (define (name alpha A transA B transB)
-              (let ((C (make-typed-array srfi4-type *unspecified*
-                                         (dim A (if (tr? transA) 1 0))
-                                         (dim B (if (tr? transB) 0 1)))))
-                (name! alpha A transA B transB 0. C)
-                C)))))))))
+       (with-syntax ((blis-name-string (symbol->string (syntax->datum #'blis-name))))
+         #'(begin
+             (define blis-name (pointer->procedure
+                                void
+                                (dynamic-func blis-name-string libblis)
+                                (list trans_t trans_t dim_t dim_t dim_t
+                                      '* '* inc_t inc_t '* inc_t inc_t
+                                      '* '* inc_t inc_t)))
+             (define (name! alpha A transA B transB beta C)
+               (check-array A 2 srfi4-type)
+               (check-array B 2 srfi4-type)
+               (check-array C 2 srfi4-type)
+               (let ((M (dim C 0))
+                     (N (dim C 1))
+                     (K (dim A (if (tr? transA) 0 1))))
+                 (unless (= M (dim A (if (tr? transA) 1 0))) (throw 'mismatched-CA))
+                 (unless (= N (dim B (if (tr? transB) 0 1))) (throw 'mismatched-CB))
+                 (unless (= K (dim B (if (tr? transB) 1 0))) (throw 'mismatched-AB))
+                 (blis-name transA transB M N K
+                            (scalar->blis-arg srfi4-type alpha)
+                            (pointer-to-first A) (stride A 0) (stride A 1)
+                            (pointer-to-first B) (stride B 0) (stride B 1)
+                            (scalar->blis-arg srfi4-type beta)
+                            (pointer-to-first C) (stride C 0) (stride C 1))))
+             (define (name alpha A transA B transB)
+               (let ((C (make-typed-array srfi4-type *unspecified*
+                                          (dim A (if (tr? transA) 1 0))
+                                          (dim B (if (tr? transB) 0 1)))))
+                 (name! alpha A transA B transB 0. C)
+                 C))))))))
 
 ;; void bli_?gemm( trans_t transa,
 ;;                 trans_t transb,
@@ -164,33 +163,32 @@
   (lambda (x)
     (syntax-case x ()
       ((_ name! name blis-name srfi4-type)
-       (with-syntax ((blis-name-string (symbol->string (syntax->datum (syntax blis-name)))))
-         (syntax
-          (begin
-            (define blis-name (pointer->procedure
-                               void
-                               (dynamic-func blis-name-string libblis)
-                               (list trans_t conj_t dim_t dim_t '* '* inc_t inc_t
-                                     '* inc_t '* '* inc_t)))
-            (define (name! alpha A transA X conjX beta Y)
-              (check-array A 2 srfi4-type)
-              (check-array X 1 srfi4-type)
-              (check-array Y 1 srfi4-type)
-              (let ((M (array-length Y))
-                    (N (array-length X)))
-                (unless (= M (dim A (if (tr? transA) 1 0))) (throw 'mismatched-YA))
-                (unless (= N (dim A (if (tr? transA) 0 1))) (throw 'mismatched-XA))
-                (blis-name transA conjX M N
-                           (scalar->blis-arg srfi4-type alpha)
-                           (pointer-to-first A) (stride A 0) (stride A 1)
-                           (pointer-to-first X) (stride X 0)
-                           (scalar->blis-arg srfi4-type beta)
-                           (pointer-to-first Y) (stride Y 0))))
-            (define (name alpha A transA X conjX)
-              (let ((Y (make-typed-array srfi4-type *unspecified*
-                                         (dim A (if (tr? transA) 1 0)))))
-                (name! alpha A transA X conjX 0. Y)
-                Y)))))))))
+       (with-syntax ((blis-name-string (symbol->string (syntax->datum #'blis-name))))
+         #'(begin
+             (define blis-name (pointer->procedure
+                                void
+                                (dynamic-func blis-name-string libblis)
+                                (list trans_t conj_t dim_t dim_t '* '* inc_t inc_t
+                                      '* inc_t '* '* inc_t)))
+             (define (name! alpha A transA X conjX beta Y)
+               (check-array A 2 srfi4-type)
+               (check-array X 1 srfi4-type)
+               (check-array Y 1 srfi4-type)
+               (let ((M (array-length Y))
+                     (N (array-length X)))
+                 (unless (= M (dim A (if (tr? transA) 1 0))) (throw 'mismatched-YA))
+                 (unless (= N (dim A (if (tr? transA) 0 1))) (throw 'mismatched-XA))
+                 (blis-name transA conjX M N
+                            (scalar->blis-arg srfi4-type alpha)
+                            (pointer-to-first A) (stride A 0) (stride A 1)
+                            (pointer-to-first X) (stride X 0)
+                            (scalar->blis-arg srfi4-type beta)
+                            (pointer-to-first Y) (stride Y 0))))
+             (define (name alpha A transA X conjX)
+               (let ((Y (make-typed-array srfi4-type *unspecified*
+                                          (dim A (if (tr? transA) 1 0)))))
+                 (name! alpha A transA X conjX 0. Y)
+                 Y))))))))
 
 ;; void bli_?gemv( trans_t transa,
 ;;                 conj_t  conjx,
@@ -220,32 +218,31 @@
   (lambda (x)
     (syntax-case x ()
       ((_ name! name blis-name srfi4-type)
-       (with-syntax ((blis-name-string (symbol->string (syntax->datum (syntax blis-name)))))
-         (syntax
-          (begin
-            (define blis-name (pointer->procedure
-                               void
-                               (dynamic-func blis-name-string libblis)
-                               (list conj_t conj_t dim_t dim_t '* '* inc_t '* inc_t
-                                     '* inc_t inc_t)))
-            (define (name! alpha X conjX Y conjY A)
-              (check-array A 2 srfi4-type)
-              (check-array X 1 srfi4-type)
-              (check-array Y 1 srfi4-type)
-              (let ((M (array-length X))
-                    (N (array-length Y)))
-                (unless (= M (dim A 0)) (throw 'mismatched-XA))
-                (unless (= N (dim A 1)) (throw 'mismatched-YA))
-                (blis-name conjX conjY (array-length X) (array-length Y)
-                           (scalar->blis-arg srfi4-type alpha)
-                           (pointer-to-first X) (stride X 0)
-                           (pointer-to-first Y) (stride Y 0)
-                           (pointer-to-first A) (stride A 0) (stride A 1))))
-            (define (name alpha X conjX Y conjY)
-              (let ((A (make-typed-array srfi4-type *unspecified*
-                                         (array-length X) (array-length Y))))
-                (name! alpha X conjX Y conjY A)
-                A)))))))))
+       (with-syntax ((blis-name-string (symbol->string (syntax->datum #'blis-name))))
+         #'(begin
+             (define blis-name (pointer->procedure
+                                void
+                                (dynamic-func blis-name-string libblis)
+                                (list conj_t conj_t dim_t dim_t '* '* inc_t '* inc_t
+                                      '* inc_t inc_t)))
+             (define (name! alpha X conjX Y conjY A)
+               (check-array A 2 srfi4-type)
+               (check-array X 1 srfi4-type)
+               (check-array Y 1 srfi4-type)
+               (let ((M (array-length X))
+                     (N (array-length Y)))
+                 (unless (= M (dim A 0)) (throw 'mismatched-XA))
+                 (unless (= N (dim A 1)) (throw 'mismatched-YA))
+                 (blis-name conjX conjY (array-length X) (array-length Y)
+                            (scalar->blis-arg srfi4-type alpha)
+                            (pointer-to-first X) (stride X 0)
+                            (pointer-to-first Y) (stride Y 0)
+                            (pointer-to-first A) (stride A 0) (stride A 1))))
+             (define (name alpha X conjX Y conjY)
+               (let ((A (make-typed-array srfi4-type *unspecified*
+                                          (array-length X) (array-length Y))))
+                 (name! alpha X conjX Y conjY A)
+                 A))))))))
 
 ;; void bli_?ger( conj_t  conjx,
 ;;                conj_t  conjy,

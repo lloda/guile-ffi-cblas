@@ -57,6 +57,7 @@ The following functions are covered:
 
 #### BLAS level 1
 
+* srotg drotg crotg zrotg
 * sscal dscal cscal zscal csscal zdscal
 * sswap dswap cswap zswap
 * scopy dcopy ccopy zcopy

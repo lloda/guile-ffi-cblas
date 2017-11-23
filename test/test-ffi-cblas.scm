@@ -7,7 +7,7 @@
 ; Software Foundation; either version 3 of the License, or (at your option) any
 ; later version.
 
-(import (ffi cblas) (srfi srfi-64) (srfi srfi-1) (ice-9 match))
+(import (ffi cblas) (srfi srfi-64) (srfi srfi-1) (ice-9 match) (srfi srfi-8))
 (include "common.scm")
 
 (set! test-log-to-file #f)
@@ -21,6 +21,29 @@
   (array-for-each (lambda (test expected) (test-approximate test expected err))
                   test expected)
   (test-end tag))
+
+
+; -----------------------------
+; srotg drotg crotg zrotg
+; -----------------------------
+
+(test-begin "rotg")
+(map (match-lambda
+       ((a b cref sref)
+        (map (match-lambda
+               ((rotg eps)
+                (receive (c s) (rotg a b)
+                  (test-approximate cref c eps)
+                  (test-approximate sref s eps))))
+          `((,srotg 1e-7)
+            (,crotg 1e-7)
+            (,drotg 1e-15)
+            (,zrotg 1e-15)))))
+  `((1. 0. 1. 0.)
+    (0. 1. 0. 1.)
+    (1. 1. ,(sqrt .5) ,(sqrt .5))
+    (-1. -1. ,(sqrt .5) ,(sqrt .5))))
+(test-end "rotg")
 
 
 ; ---------------------------------
