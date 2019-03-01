@@ -1,12 +1,13 @@
 
-**guile-ffi-cblas** is a set of Guile FFI bindings for two libraries of linear
-algebra subprograms, **CBLAS** and **BLIS**. They provide operations such as
-vector dot product, matrix-vector product, matrix-matrix product, and so on.
+### guile-ffi-cblas
+
+This is a set of Guile FFI bindings for two libraries of linear algebra
+subprograms, **CBLAS** and **BLIS**. They provide operations such as vector dot
+product, matrix-vector product, matrix-matrix product, and so on.
 
 The bindings for either library are entirely independent. You do not need to
 have **BLIS** installed to use the **CBLAS** bindings or viceversa. I am
-packaging them together because the bindings happen to share some amount of
-code.
+packaging them together because the bindings happen to share a lot of the code.
 
 **CBLAS** (or **BLAS**) is an established standard. It's by far the more popular
 library, and it probably has the fastest implementation on your
@@ -51,11 +52,26 @@ example, negative strides require specific handling for **CBLAS** and are not
 supported yet. Once again, **BLIS** doesn't mess up negative strides, so it avoids
 this problem.
 
-The following functions are covered:
+---
+
+### Running the tests
+
+```
+$GUILE -L mod -s test/test-ffi-cblas.scm
+$GUILE -L mod -s test/test-ffi-blis.scm
+```
+
+You might need
+
+```
+GUILE_FFI_CBLAS_LIBCBLAS_NAME=libblas GUILE_FFI_CBLAS_LIBCBLAS_PATH=/custom/path/lib $GUILE ... etc.
+```
 
 ---
 
-#### BLAS level 1
+### Coverage
+
+#### CBLAS level 1
 
 * srotg drotg crotg zrotg
 * sscal dscal cscal zscal csscal zdscal
@@ -67,22 +83,20 @@ The following functions are covered:
 * sasum dasum scasum dzasum
 * isamax idamax icamax izamax
 
-#### BLAS level 2
+#### CBLAS level 2
 
 * sgemv dgemv cgemv zgemv
 * sger dger cgeru zgeru cgerc zgerc
 
-#### BLAS level 3
+#### CBLAS level 3
 
 * sgemm dgemm cgemm zgemm
 
-----
-
-#### BLIS level 2
+#### CBLIS level 2
 
 * sgemv dgemv cgemv zgemv
 * sger dger cger zger
 
-#### BLIS level 3
+#### CBLIS level 3
 
 * sgemm dgemm cgemm zgemm
