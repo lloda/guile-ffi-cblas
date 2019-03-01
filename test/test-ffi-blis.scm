@@ -1,6 +1,6 @@
 
 ; Tests for (ffi blis).
-; (c) Daniel Llorens - 2014
+; (c) Daniel Llorens - 2014-2015, 2019
 
 ; This library is free software; you can redistribute it and/or modify it under
 ; the terms of the GNU General Public License as published by the Free
@@ -30,6 +30,49 @@
   (array-for-each (lambda (test expected) (test-approximate test expected err))
                   test expected)
   (test-end tag))
+
+; ---------------------------------
+; sdotv ddotv cdotv zdotv
+; ---------------------------------
+
+(define (ref-dotv conj-A conj-B A B)
+  (let ((rho 0))
+    (array-for-each
+     (lambda (a b)
+       (set! rho (+ rho (* (if (= conj-A BLIS_CONJUGATE) (conj a) a)
+                           (if (= conj-B BLIS_CONJUGATE) (conj b) b)))))
+     A B)
+    rho))
+
+(define (test-dotv srfi4-type dotv conj-A conj-B make-A make-B)
+  (let* ((tag (format #f "~a:~a" (procedure-name make-A) (procedure-name make-B)))
+         (case-name (format #f "~a, ~a" (procedure-name dotv) tag))
+         (A (fill-A1! (make-A srfi4-type)))
+         (B (fill-B1! (make-B srfi4-type))))
+    (test-begin case-name)
+    (test-equal (ref-dotv conj-A conj-B A B) (dotv conj-A conj-B A B))
+    (test-end case-name)))
+
+(map
+    (match-lambda
+      ((srfi4-type dotv)
+       (for-each
+           (lambda (make-A)
+             (for-each
+                 (lambda (make-B)
+                   (for-each
+                       (lambda (conj-A)
+                         (for-each
+                             (lambda (conj-B)
+                               (test-dotv srfi4-type dotv conj-A conj-B make-A make-B))
+                           (list BLIS_CONJUGATE BLIS_NO_CONJUGATE)))
+                     (list BLIS_CONJUGATE BLIS_NO_CONJUGATE)))
+               (list make-v-compact make-v-offset make-v-strided)))
+         (list make-v-compact make-v-offset make-v-strided))))
+  `((f64 ,ddotv)
+    (f32 ,sdotv)
+    (c64 ,zdotv)
+    (c32 ,cdotv)))
 
 ; ---------------------------------
 ; sgemm dgemm cgemm zgemm
@@ -196,5 +239,4 @@
    (c32 ,cger!)
    (c64 ,zger!)))
 
-(unless (zero? (test-runner-fail-count (test-runner-current)))
-  (error "FAILED test-ffi-cblas.csm"))
+(exit (test-runner-fail-count (test-runner-current)))

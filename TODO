@@ -1,0 +1,23 @@
+(guile-ffi-cblas) -*- mode: org; -*-
+
+Help: [C-uc .] insert timestamp [C-cc] flip checkbox [C-uucc] partial flip checkbox [C-ct] flip TODO.
+
+* TODO coverage [0/0]
+  * finish wrapping CBLAS [0/1]
+    * [ ] see mod/ffi/cblas.scm
+  * wrap BLIS level 1v [1/2]
+    * [X] dotv
+    * [ ] addv amaxv axpyv axpbyv copyv dotxv invertv scal2v scalv setv subv swapv xpbyvdotv
+  * wrap BLIS level 1n [0/1]
+    * [ ] addm axpym copym scalm scal2m setm subm
+  * wrap BLIS utility, at least some of these [0/1]
+    * [ ] asumv norm1v normfv normiv norm1m normfm normim mkherm mksymm mktrim randv randm sumsqv
+
+* TODO documentation [0/3]
+  * [ ] module level doc
+  * [ ] docstrings for 3rd level functions
+  * [ ] docstrings for 2nd level functions
+  * [ ] docstrings for 1st level functions
+
+* TODO bugs [0/1]
+  * [ ] CBLAS negative strides

@@ -1,6 +1,6 @@
 
 ; Access CBLAS through Guile's FFI.
-; (c) Daniel Llorens - 2014-2015, 2017
+; (c) Daniel Llorens - 2014-2015, 2017, 2019
 
 ; This library is free software; you can redistribute it and/or modify it under
 ; the terms of the GNU General Public License as published by the Free
@@ -8,7 +8,7 @@
 ; later version.
 
 (define-module (ffi cblas))
-(import (system foreign) (srfi srfi-1) (srfi srfi-11))
+(import (system foreign) (srfi srfi-1) (srfi srfi-11) (ffi arrays))
 
 ; TODO As an alternative go through installation.
 (define libcblas (dynamic-link (let ((lpath (getenv "GUILE_FFI_CBLAS_LIBCBLAS_PATH"))
@@ -17,24 +17,10 @@
                                    (string-append lpath file-name-separator-string lname)
                                    lname))))
 
-(define (check-array A rank type)
-  (unless (= rank (array-rank A)) (throw 'bad-rank (array-rank A)))
-  (unless (typed-array? A type) (throw 'bad-type type (array-type A))))
-
-(define (check-2-arrays A B rank type)
-  (check-array A rank type)
-  (check-array B rank type)
-  (unless (= (array-length A) (array-length B))
-    (throw 'bad-sizes (array-length A) (array-length B)))
-  (unless (= 0 (caar (array-shape A)) (caar (array-shape B)))
-    (throw 'bad-base-indices (array-length A) (array-length B))))
-
-(define (srfi4-type-size srfi4-type)
-  (case srfi4-type
-    ((f32) 4)
-    ((f64 c32) 8)
-    ((c64) 16)
-    (else (throw 'bad-array-type srfi4-type))))
+
+; -----------------------------
+; wrapper utilities
+; -----------------------------
 
 (define (srfi4-type->type srfi4-type)
   (case srfi4-type
@@ -49,22 +35,21 @@
     ((f64 c64) double)
     (else (throw 'no-ffi-type-for-real-type srfi4-type))))
 
-; @BUG BLAS expects different when the inc is negative (expects pointer to size*inc element, so first in memory; not to the logically first element).
+; BUG CBLAS expects different when the inc is negative (expects pointer to size*inc element, so first in memory; not to the logically first element).
 (define (pointer-to-first A)
   (bytevector->pointer (shared-array-root A)
                        (* (shared-array-offset A) (srfi4-type-size (array-type A)))))
 
-(define (scalar->cblas-arg srfi4-type a)
+(define (scalar->arg srfi4-type a)
   (case srfi4-type
     ((f32 f64) a)
     ((c32 c64) (pointer-to-first (make-typed-array srfi4-type a)))
     (else (throw 'bad-array-type srfi4-type))))
 
-(define (stride A i)
-  (list-ref (shared-array-increments A) i))
-
-(define (dim A i)
-  (list-ref (array-dimensions A) i))
+
+; -----------------------------
+; reference & legend
+; -----------------------------
 
 ;; Consider http://wiki.call-cc.org/eggref/4/blas#usage
 ;; The three variants per binding would be:
@@ -189,15 +174,15 @@ LEVEL 3
   (lambda (x)
     (syntax-case x ()
       ((_ name cblas-name ctype stype)
-       (with-syntax
-           ((cblas-name-string (symbol->string (syntax->datum #'cblas-name)))
-            (doc-string (string-append (symbol->string (syntax->datum #'cblas-name)) " a b -> (values c s)")))
+       (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name)))
+                     (docstring (string-append (symbol->string (syntax->datum #'cblas-name))
+                                               " a b -> (values c s)")))
          #'(begin
              (define cblas-name (pointer->procedure void
                                                     (dynamic-func cblas-name-string libcblas)
                                                     (list '* '* '* '*)))
              (define (name a b)
-               doc-string
+               docstring
                (let ((a (make-typed-array ctype a))
                      (b (make-typed-array ctype b))
                      (c (make-typed-array stype *unspecified*))
@@ -377,7 +362,7 @@ LEVEL 3
                                                     (list int (srfi4-type->type srfi4-type) '* int '* int)))
              (define (name a X Y)
                (check-2-arrays X Y 1 srfi4-type)
-               (cblas-name (array-length X) (scalar->cblas-arg srfi4-type a)
+               (cblas-name (array-length X) (scalar->arg srfi4-type a)
                            (pointer-to-first X) (stride X 0)
                            (pointer-to-first Y) (stride Y 0)))))))))
 
@@ -407,7 +392,7 @@ LEVEL 3
                                  (list int (srfi4-type->type scalar-srfi4-type) '* int)))
              (define (name alpha X)
                (check-array X 1 srfi4-type)
-               (cblas-name (array-length X) (scalar->cblas-arg scalar-srfi4-type alpha)
+               (cblas-name (array-length X) (scalar->arg scalar-srfi4-type alpha)
                            (pointer-to-first X) (stride X 0)))))))))
 
 ; void cblas_sscal (const int N, const float alpha, const float *X, const int incX)
@@ -519,7 +504,7 @@ LEVEL 3
                (check-arrays-AXY A Y X srfi4-type)
                (let-values (((A-lead A-order) (lead-and-order A)))
                  (cblas-name A-order
-                             (dim A 0) (dim A 1) (scalar->cblas-arg srfi4-type alpha)
+                             (dim A 0) (dim A 1) (scalar->arg srfi4-type alpha)
                              (pointer-to-first X) (stride X 0)
                              (pointer-to-first Y) (stride Y 0)
                              (pointer-to-first A) A-lead)))))))))
@@ -610,9 +595,9 @@ LEVEL 3
                  (unless (= N (array-length X)) (throw 'mismatched-AX N (array-length X)))
                  (let-values (((A-lead A-order) (lead-and-order A)))
                    (cblas-name A-order TransA
-                               M N (scalar->cblas-arg srfi4-type alpha)
+                               M N (scalar->arg srfi4-type alpha)
                                (pointer-to-first A) A-lead
-                               (pointer-to-first X) (stride X 0) (scalar->cblas-arg srfi4-type beta)
+                               (pointer-to-first X) (stride X 0) (scalar->arg srfi4-type beta)
                                (pointer-to-first Y) (stride Y 0)))))))))))
 
 ; void cblas_sgemv (const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE TransA,
@@ -659,10 +644,10 @@ LEVEL 3
                    (let ((TransA (if (eqv? C-order A-order) TransA (fliptr TransA)))
                          (TransB (if (eqv? C-order B-order) TransB (fliptr TransB))))
                      (cblas-name C-order TransA TransB M N K
-                                 (scalar->cblas-arg srfi4-type alpha)
+                                 (scalar->arg srfi4-type alpha)
                                  (pointer-to-first A) A-lead
                                  (pointer-to-first B) B-lead
-                                 (scalar->cblas-arg srfi4-type beta)
+                                 (scalar->arg srfi4-type beta)
                                  (pointer-to-first C) C-lead)))))))))))
 
 ; void cblas_sgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE TransA,

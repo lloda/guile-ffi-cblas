@@ -331,5 +331,4 @@
    (c32 ,cgemm!)
    (c64 ,zgemm!)))
 
-(unless (zero? (test-runner-fail-count (test-runner-current)))
-  (error "FAILED test-ffi-cblas.csm"))
+(exit (test-runner-fail-count (test-runner-current)))

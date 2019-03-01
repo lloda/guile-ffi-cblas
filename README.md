@@ -7,7 +7,7 @@ product, matrix-vector product, matrix-matrix product, and so on.
 
 The bindings for either library are entirely independent. You do not need to
 have **BLIS** installed to use the **CBLAS** bindings or viceversa. I am
-packaging them together because the bindings happen to share a lot of the code.
+packaging them together because they happen to share some code.
 
 **CBLAS** (or **BLAS**) is an established standard. It's by far the more popular
 library, and it probably has the fastest implementation on your
@@ -47,12 +47,13 @@ stride for matrix arguments, assuming column-major order), some array arguments
 will cause the typed binding to fail, or result in extra copies with the
 functional binding. **BLIS** doesn't have this problem.
 
+If the function doesn't return an array (e.g. `cdot`) then we only provide
+two bindings (e.g. `cblas_cdot` and `cdot`).
+
 Note that these bindings are a work in progress and that there are bugs. For
 example, negative strides require specific handling for **CBLAS** and are not
 supported yet. Once again, **BLIS** doesn't mess up negative strides, so it avoids
 this problem.
-
----
 
 ### Running the tests
 
@@ -61,15 +62,17 @@ $GUILE -L mod -s test/test-ffi-cblas.scm
 $GUILE -L mod -s test/test-ffi-blis.scm
 ```
 
-You might need
+Depending on your installation (see above) you might need
 
 ```
-GUILE_FFI_CBLAS_LIBCBLAS_NAME=libblas GUILE_FFI_CBLAS_LIBCBLAS_PATH=/custom/path/lib $GUILE ... etc.
+GUILE_FFI_CBLAS_LIBCBLAS_NAME=libblas \
+GUILE_FFI_CBLAS_LIBCBLAS_PATH=/custom/path/lib \
+$GUILE ... etc.
 ```
-
----
 
 ### Coverage
+
+---
 
 #### CBLAS level 1
 
@@ -91,6 +94,12 @@ GUILE_FFI_CBLAS_LIBCBLAS_NAME=libblas GUILE_FFI_CBLAS_LIBCBLAS_PATH=/custom/path
 #### CBLAS level 3
 
 * sgemm dgemm cgemm zgemm
+
+---
+
+#### CBLIS level 1
+
+* sdotv ddotv cdotv zdotv
 
 #### CBLIS level 2
 
