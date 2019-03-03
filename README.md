@@ -12,6 +12,8 @@ packaging them together because they happen to share some code.
 **CBLAS** (or **BLAS**) is an established standard. It's by far the more popular
 library, and it probably has the fastest implementation on your
 system. However **BLIS** is much more regular and nicer to program against.
+These bindings are for the ‘typed’ API
+([https://github.com/flame/blis/blob/master/docs/BLISTypedAPI.md]).
 
 Both sets of bindings work in the same way. Upon importing `(ffi cblas)` (or
 `(ffi blis)`), the bindings will attempt to load **CBLAS** (or **BLIS**)
@@ -41,7 +43,7 @@ example:
 
 In principle, for the last two bindings, you don't need to care whether your
 array is row-major or column-major or what the strides are. The bindings will
-extract the required stride arguments from the array descriptors. However, since
+extract the required strides from the array arguments. However, since
 **CBLAS** doesn't support arbitrary strides (e.g. it only supports a column
 stride for matrix arguments, assuming column-major order), some array arguments
 will cause the typed binding to fail, or result in extra copies with the
@@ -50,9 +52,14 @@ functional binding. **BLIS** doesn't have this problem.
 If the function doesn't return an array (e.g. `cdot`) then we only provide
 two bindings (e.g. `cblas_cdot` and `cdot`).
 
-Note that these bindings are a work in progress and that there are bugs. For
+The bindings also provide type generic versions of the functions (e.g. `dotv`
+for **BLIS** `sdot`/`ddot`/`cdot`/`zdot`). These simply call one of the typed
+variants according to the type of the first array argument. Type `,help (ffi
+cblas)` (or `,help (ffi blis)`) at the REPL to list all the bindings available.
+
+Note that this package is a work in progress and that there are bugs. For
 example, negative strides require specific handling for **CBLAS** and are not
-supported yet. Once again, **BLIS** doesn't mess up negative strides, so it avoids
+supported yet. **BLIS** doesn't mess up negative strides, so it avoids
 this problem.
 
 ### Running the tests
@@ -65,7 +72,7 @@ $GUILE -L mod -s test/test-ffi-blis.scm
 Depending on your installation (see above) you might need
 
 ```
-GUILE_FFI_CBLAS_LIBCBLAS_NAME=libblas \
+GUILE_FFI_CBLAS_LIBCBLAS_NAME=libotherblas \
 GUILE_FFI_CBLAS_LIBCBLAS_PATH=/custom/path/lib \
 $GUILE ... etc.
 ```
@@ -99,6 +106,8 @@ $GUILE ... etc.
 
 #### CBLIS level 1
 
+* sdaxpy ddaxpy cdaxpy zdaxpy
+* sdaxpby ddaxpby cdaxpby zdaxpby
 * sdotv ddotv cdotv zdotv
 
 #### CBLIS level 2

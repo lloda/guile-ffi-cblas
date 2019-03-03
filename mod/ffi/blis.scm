@@ -8,7 +8,7 @@
 ; later version.
 
 (define-module (ffi blis))
-(import (system foreign) (srfi srfi-1) (srfi srfi-11) (ffi arrays))
+(import (system foreign) (srfi srfi-1) (srfi srfi-11) (ffi arrays) (ice-9 match))
 
 ; TODO As an alternative go through installation.
 (define libblis (dynamic-link (let ((lpath (getenv "GUILE_FFI_CBLAS_LIBBLIS_PATH"))
@@ -72,17 +72,150 @@
 
 
 ; -----------------------------
-; level-1v: addv amaxv axpyv axpbyv copyv *dotv dotxv invertv scal2v scalv setv subv swapv xpbyv
+; level-1v: addv amaxv *axpyv *axpbyv copyv *dotv dotxv invertv scal2v scalv setv subv swapv xpbyv
 ; -----------------------------
+
+#|
+y := beta * y + alpha * conjx(x)
+
+void bli_?axpbyv
+     (
+       conj_t  conjx,
+       dim_t   n,
+       ctype*  alpha,
+       ctype*  x, inc_t incx,
+       ctype*  beta,
+       ctype*  y, inc_t incy
+     )
+|#
+
+(define-syntax define-axpbyv
+  (lambda (x)
+    (syntax-case x ()
+      ((_ name! blis-name type)
+       (with-syntax
+           ((blis-name-string (symbol->string (syntax->datum #'blis-name)))
+            (docstring (format #f "(~a conjx [conj_t] alpha [~a] x [#~a(…)] beta [~a] y [#~a(…)])\n\n~a\n"
+                               (symbol->string (syntax->datum #'name!))
+                               (syntax->datum #'type) (syntax->datum #'type)
+                               (syntax->datum #'type) (syntax->datum #'type)
+                               "y := beta * y + alpha * conjx(x)")))
+         #'(begin
+             (define blis-name (pointer->procedure
+                                void (dynamic-func blis-name-string libblis)
+                                (list conj_t dim_t '* '* inc_t '* '* inc_t)))
+             (define (name! conjX alpha X beta Y)
+               docstring
+               (check-2-arrays X Y 1 (quote type))
+               (blis-name conjX (array-length X)
+                          (scalar->arg (quote type) alpha)
+                          (pointer-to-first X) (stride X 0)
+                          (scalar->arg (quote type) beta)
+                          (pointer-to-first Y) (stride Y 0)))))))))
+
+(define-axpbyv saxpbyv! bli_saxpbyv f32)
+(define-axpbyv daxpbyv! bli_daxpbyv f64)
+(define-axpbyv caxpbyv! bli_caxpbyv c32)
+(define-axpbyv zaxpbyv! bli_zaxpbyv c64)
+
+(define (axpbyv! conjX alpha X beta Y)
+  "
+(axpbyv! conjX [conj_t] alpha [type] X [#type(…)] beta [type] Y [#type(…)])
+
+y := beta * y + alpha * conjx(x)
+
+See also: saxpbyv! daxpbyv! caxpbyv! zaxpbyv! axpyv!"
+
+  ((match (array-type X)
+     (('f32 saxpbyv!) ('f64 daxpbyv!) ('c32 caxpbyv!) ('c64 saxpbyv!)))
+   conjX alpha X beta Y))
+
+(export bli_saxpbyv bli_daxpbyv bli_caxpbyv bli_zaxpbyv
+        saxpbyv! daxpbyv! caxpbyv! zaxpbyv!
+        axpbyv!)
+
+#|
+y := y + alpha * conjx(x)
+
+void bli_?axpyv
+     (
+       conj_t  conjx,
+       dim_t   n,
+       ctype*  alpha,
+       ctype*  x, inc_t incx,
+       ctype*  y, inc_t incy
+     )
+|#
+
+(define-syntax define-axpyv
+  (lambda (x)
+    (syntax-case x ()
+      ((_ name! blis-name type)
+       (with-syntax
+           ((blis-name-string (symbol->string (syntax->datum #'blis-name)))
+            (docstring (format #f "(~a conjx [conj_t] alpha [~a] x [#~a(…)] y [#~a(…)])\n\n~a\n"
+                               (symbol->string (syntax->datum #'name!))
+                               (syntax->datum #'type) (syntax->datum #'type)
+                               (syntax->datum #'type)
+                               "y := y + alpha * conjx(x)")))
+         #'(begin
+             (define blis-name (pointer->procedure
+                                void (dynamic-func blis-name-string libblis)
+                                (list conj_t dim_t '* '* inc_t '* inc_t)))
+             (define (name! conjX alpha X Y)
+               docstring
+               (check-2-arrays X Y 1 (quote type))
+               (blis-name conjX (array-length X)
+                            (scalar->arg (quote type) alpha)
+                            (pointer-to-first X) (stride X 0)
+                            (pointer-to-first Y) (stride Y 0)))))))))
+
+(define-axpyv saxpyv! bli_saxpyv f32)
+(define-axpyv daxpyv! bli_daxpyv f64)
+(define-axpyv caxpyv! bli_caxpyv c32)
+(define-axpyv zaxpyv! bli_zaxpyv c64)
+
+(define (axpyv! conjX alpha X Y)
+  "
+(axpyv! conjX [conj_t] alpha [type] X [#type()] Y [#type()])
+
+y := y + alpha * conjx(x)
+
+See also: saxpyv! daxpyv! caxpyv! zaxpyv! axpbyv!"
+
+  ((match (array-type X)
+     ('f32 saxpyv!) ('f64 daxpyv!) ('c32 caxpyv!) ('c64 zaxpyv!))
+   conjX alpha X Y))
+
+(export bli_saxpyv bli_daxpyv bli_caxpyv bli_zaxpyv
+        saxpyv! daxpyv! caxpyv! zaxpyv!
+        axpyv!)
+
+#|
+rho := conjx(x)^T * conjy(y)
+
+void bli_?dotv
+     (
+       conj_t  conjx,
+       conj_t  conjy,
+       dim_t   n,
+       ctype*  x, inc_t incx,
+       ctype*  y, inc_t incy,
+       ctype*  rho
+       );
+|#
 
 (define-syntax define-dotv
   (lambda (x)
     (syntax-case x ()
       ((_ name blis-name type)
-       (with-syntax ((blis-name-string (symbol->string (syntax->datum #'blis-name)))
-                     (docstring (format #f "~a conjx [conj_t] conjy [conj_t] x [#~a(…)] y [#~a(…)]  -> rho"
-                                        (symbol->string (syntax->datum #'name))
-                                        (syntax->datum #'type) (syntax->datum #'type))))
+       (with-syntax
+           ((blis-name-string (symbol->string (syntax->datum #'blis-name)))
+            (docstring (format #f "(~a conjx [conj_t] conjy [conj_t] x [#~a(…)] y [#~a(…)])\n\t-> rho [~a]\n\n~a\n"
+                               (symbol->string (syntax->datum #'name))
+                               (syntax->datum #'type) (syntax->datum #'type)
+                               (syntax->datum #'type)
+                               "rho := conjx(x)^T * conjy(y)")))
          #'(begin
              (define blis-name (pointer->procedure
                                 void (dynamic-func blis-name-string libblis)
@@ -97,25 +230,26 @@
                             (pointer-to-first rho))
                  (array-ref rho)))))))))
 
-#|
-void bli_?dotv
-     (
-       conj_t  conjx,
-       conj_t  conjy,
-       dim_t   n,
-       ctype*  x, inc_t incx,
-       ctype*  y, inc_t incy,
-       ctype*  rho
-       );
-|#
-
 (define-dotv sdotv bli_sdotv f32)
 (define-dotv ddotv bli_ddotv f64)
 (define-dotv cdotv bli_cdotv c32)
 (define-dotv zdotv bli_zdotv c64)
 
+(define (dotv conjX conjY X Y)
+  "
+(dotv conjX [conj_t] conjY [conj_t] X [#type(…)] Y [#type(…)]\n\t-> rho [type])
+
+rho := conjx(x)^T * conjy(y)
+
+See also: sdotv ddotv cdotv vdotv"
+
+  ((match (array-type X)
+     ('f32 sdotv) ('f64 ddotv) ('c32 cdotv) ('c64 zdotv))
+   conjX conjY X Y))
+
 (export bli_sdotv bli_ddotv bli_cdotv bli_zdotv
-        sdotv ddotv cdotv zdotv)
+        sdotv ddotv cdotv zdotv
+        dotv)
 
 
 ; -----------------------------
@@ -126,7 +260,8 @@ void bli_?dotv
   (lambda (x)
     (syntax-case x ()
       ((_ name! name blis-name srfi4-type)
-       (with-syntax ((blis-name-string (symbol->string (syntax->datum #'blis-name))))
+       (with-syntax
+           ((blis-name-string (symbol->string (syntax->datum #'blis-name))))
          #'(begin
              (define blis-name (pointer->procedure
                                 void (dynamic-func blis-name-string libblis)
@@ -185,7 +320,8 @@ void bli_?dotv
   (lambda (x)
     (syntax-case x ()
       ((_ name! name blis-name srfi4-type)
-       (with-syntax ((blis-name-string (symbol->string (syntax->datum #'blis-name))))
+       (with-syntax
+           ((blis-name-string (symbol->string (syntax->datum #'blis-name))))
          #'(begin
              (define blis-name (pointer->procedure
                                 void (dynamic-func blis-name-string libblis)
@@ -239,7 +375,8 @@ void bli_?dotv
   (lambda (x)
     (syntax-case x ()
       ((_ name! name blis-name srfi4-type)
-       (with-syntax ((blis-name-string (symbol->string (syntax->datum #'blis-name))))
+       (with-syntax
+           ((blis-name-string (symbol->string (syntax->datum #'blis-name))))
          #'(begin
              (define blis-name (pointer->procedure
                                 void (dynamic-func blis-name-string libblis)

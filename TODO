@@ -6,8 +6,8 @@ Help: [C-uc .] insert timestamp [C-cc] flip checkbox [C-uucc] partial flip check
   * finish wrapping CBLAS [0/1]
     * [ ] see mod/ffi/cblas.scm
   * wrap BLIS level 1v [1/2]
-    * [X] dotv
-    * [ ] addv amaxv axpyv axpbyv copyv dotxv invertv scal2v scalv setv subv swapv xpbyvdotv
+    * [X] dotv axpyv axpbyv
+    * [ ] addv amaxv copyv dotxv invertv scal2v scalv setv subv swapv xpbyvdotv
   * wrap BLIS level 1n [0/1]
     * [ ] addm axpym copym scalm scal2m setm subm
   * wrap BLIS utility, at least some of these [0/1]
