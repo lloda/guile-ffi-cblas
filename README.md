@@ -13,7 +13,7 @@ packaging them together because they happen to share some code.
 library, and it probably has the fastest implementation on your
 system. However **BLIS** is much more regular and nicer to program against.
 These bindings are for the ‘typed’ API
-([https://github.com/flame/blis/blob/master/docs/BLISTypedAPI.md]).
+(https://github.com/flame/blis/blob/master/docs/BLISTypedAPI.md).
 
 Both sets of bindings work in the same way. Upon importing `(ffi cblas)` (or
 `(ffi blis)`), the bindings will attempt to load **CBLAS** (or **BLIS**)
@@ -53,9 +53,11 @@ If the function doesn't return an array (e.g. `cdot`) then we only provide
 two bindings (e.g. `cblas_cdot` and `cdot`).
 
 The bindings also provide type generic versions of the functions (e.g. `dotv`
-for **BLIS** `sdot`/`ddot`/`cdot`/`zdot`). These simply call one of the typed
-variants according to the type of the first array argument. Type `,help (ffi
-cblas)` (or `,help (ffi blis)`) at the REPL to list all the bindings available.
+for **BLIS** `sdotv ddotv cdotv zdotv`). These simply call one of the
+typed variants according to the type of the first array argument.
+
+Enter `,help (ffi cblas)` (or `,help (ffi blis)`) at the Guile REPL to list all
+the bindings available.
 
 Note that this package is a work in progress and that there are bugs. For
 example, negative strides require specific handling for **CBLAS** and are not
@@ -63,6 +65,8 @@ supported yet. **BLIS** doesn't mess up negative strides, so it avoids
 this problem.
 
 ### Running the tests
+
+The tests use SRFI-64.
 
 ```
 $GUILE -L mod -s test/test-ffi-cblas.scm

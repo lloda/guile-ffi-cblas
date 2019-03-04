@@ -265,27 +265,27 @@
     (test-end tag)))
 
 (for-each
- (match-lambda
-     ((type ger!)
+    (match-lambda
+      ((type ger!)
 ; TODO some extra tests with non-square matrices.
-      (for-each
-       (match-lambda ((make-X make-Y make-A conjX conjY)
-                      (test-ger (format #f "ger:~a:~a:~a:~a:~a:~a" type (procedure-name make-X)
-                                         (procedure-name make-Y) (procedure-name make-A)
-                                         conjX conjY)
-                                 ger! 3. (fill-A1! (make-X type)) conjX
-                                 (fill-A1! (make-Y type)) conjY
-                                 (fill-A2! (make-A type)))))
-       (apply list-product
-         (list (list make-v-compact make-v-strided make-v-offset make-v-strided-reversed)
-               (list make-v-compact make-v-strided make-v-offset make-v-strided-reversed)
-               (list make-M-c-order make-M-fortran-order make-M-offset
-                     make-M-strided make-M-strided-both make-M-strided-reversed)
-               (list BLIS_NO_CONJUGATE BLIS_CONJUGATE)
-               (list BLIS_NO_CONJUGATE BLIS_CONJUGATE))))))
- `((f32 ,sger!)
-   (f64 ,dger!)
-   (c32 ,cger!)
-   (c64 ,zger!)))
+       (for-each
+           (match-lambda ((make-X make-Y make-A conjX conjY)
+                          (test-ger (format #f "ger:~a:~a:~a:~a:~a:~a" type (procedure-name make-X)
+                                            (procedure-name make-Y) (procedure-name make-A)
+                                            conjX conjY)
+                                    ger! 3. (fill-A1! (make-X type)) conjX
+                                    (fill-A1! (make-Y type)) conjY
+                                    (fill-A2! (make-A type)))))
+         (list-product
+          (list make-v-compact make-v-strided make-v-offset make-v-strided-reversed)
+          (list make-v-compact make-v-strided make-v-offset make-v-strided-reversed)
+          (list make-M-c-order make-M-fortran-order make-M-offset
+                make-M-strided make-M-strided-both make-M-strided-reversed)
+          (list BLIS_NO_CONJUGATE BLIS_CONJUGATE)
+          (list BLIS_NO_CONJUGATE BLIS_CONJUGATE)))))
+  `((f32 ,sger!)
+    (f64 ,dger!)
+    (c32 ,cger!)
+    (c64 ,zger!)))
 
 (exit (test-runner-fail-count (test-runner-current)))

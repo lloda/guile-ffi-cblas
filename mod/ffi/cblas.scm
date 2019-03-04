@@ -8,7 +8,7 @@
 ; later version.
 
 (define-module (ffi cblas))
-(import (system foreign) (srfi srfi-1) (srfi srfi-11) (ffi arrays))
+(import (system foreign) (srfi srfi-1) (srfi srfi-11) (ffi arrays) (ice-9 match))
 
 ; TODO As an alternative go through installation.
 (define libcblas (dynamic-link (let ((lpath (getenv "GUILE_FFI_CBLAS_LIBCBLAS_PATH"))
@@ -45,6 +45,55 @@
     ((f32 f64) a)
     ((c32 c64) (pointer-to-first (make-typed-array srfi4-type a)))
     (else (throw 'bad-array-type srfi4-type))))
+
+
+; -----------------------------
+; CBLAS flags
+; -----------------------------
+
+; CBLAS_ORDER
+(define CblasRowMajor 101)
+(define CblasColMajor 102)
+
+; CBLAS_TRANSPOSE
+(define CblasNoTrans 111)
+(define CblasTrans 112)
+(define CblasConjTrans 113)
+(define AtlasConj 114) ; not standard
+
+; CBLAS_UPLO
+(define CblasUpper 121)
+(define CblasLower 122)
+
+; CBLAS_DIAG
+(define CblasNonUnit 131)
+(define CblasUnit 132)
+
+; CBLAS_SIDE
+(define CblasLeft 141)
+(define CblasRight 142)
+
+(export CblasRowMajor CblasColMajor
+        CblasNoTrans CblasTrans CblasConjTrans AtlasConj
+        CblasUpper CblasLower
+        CblasNonUnit CblasUnit
+        CblasLeft CblasRight)
+
+(define (fliptr CBLAS_TRANSPOSE)
+  (cond
+   ((= CBLAS_TRANSPOSE CblasNoTrans) CblasTrans)
+   ((= CBLAS_TRANSPOSE AtlasConj) CblasConjTrans)
+   ((= CBLAS_TRANSPOSE CblasTrans) CblasNoTrans)
+   ((= CBLAS_TRANSPOSE CblasConjTrans) AtlasConj)
+   (else (throw 'bad-CBLAS_TRANSPOSE-1 CBLAS_TRANSPOSE))))
+
+(define (tr? CBLAS_TRANSPOSE)
+  (cond
+   ((= CBLAS_TRANSPOSE CblasNoTrans) #f)
+   ((= CBLAS_TRANSPOSE AtlasConj) #f)
+   ((= CBLAS_TRANSPOSE CblasTrans) #t)
+   ((= CBLAS_TRANSPOSE CblasConjTrans) #t)
+   (else (throw 'bad-CBLAS_TRANSPOSE-2 CBLAS_TRANSPOSE))))
 
 
 ; -----------------------------
@@ -525,49 +574,6 @@ LEVEL 3
 ; -----------------------------
 ; alpha*sum_j(A_{ij} * X_j) + beta*Y_i -> Y_i: sgemv dgemv cgemv zgemv
 ; -----------------------------
-
-; CBLAS_ORDER
-(define CblasRowMajor 101)
-(define CblasColMajor 102)
-(export CblasRowMajor CblasColMajor)
-
-; CBLAS_TRANSPOSE
-(define CblasNoTrans 111)
-(define CblasTrans 112)
-(define CblasConjTrans 113)
-(define AtlasConj 114)
-(export CblasNoTrans CblasTrans CblasConjTrans AtlasConj)
-
-(define (fliptr CBLAS_TRANSPOSE)
-  (cond
-   ((= CBLAS_TRANSPOSE CblasNoTrans) CblasTrans)
-   ((= CBLAS_TRANSPOSE AtlasConj) CblasConjTrans)
-   ((= CBLAS_TRANSPOSE CblasTrans) CblasNoTrans)
-   ((= CBLAS_TRANSPOSE CblasConjTrans) AtlasConj)
-   (else (throw 'bad-CBLAS_TRANSPOSE-1 CBLAS_TRANSPOSE))))
-
-(define (tr? CBLAS_TRANSPOSE)
-  (cond
-   ((= CBLAS_TRANSPOSE CblasNoTrans) #f)
-   ((= CBLAS_TRANSPOSE AtlasConj) #f)
-   ((= CBLAS_TRANSPOSE CblasTrans) #t)
-   ((= CBLAS_TRANSPOSE CblasConjTrans) #t)
-   (else (throw 'bad-CBLAS_TRANSPOSE-2 CBLAS_TRANSPOSE))))
-
-; CBLAS_UPLO
-(define CblasUpper 121)
-(define CblasLower 122)
-(export CblasUpper CblasLower)
-
-; CBLAS_DIAG
-(define CblasNonUnit 131)
-(define CblasUnit 132)
-(export CblasNonUnit CblasUnit)
-
-; CBLAS_SIDE
-(define CblasLeft 141)
-(define CblasRight 142)
-(export CblasLeft CblasRight)
 
 (define (lead-and-order A)
   (let ((A-strides (shared-array-increments A)))

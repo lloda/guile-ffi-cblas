@@ -35,6 +35,31 @@
 (define (scalar->arg srfi4-type a)
   (pointer-to-first (make-typed-array srfi4-type a)))
 
+(eval-when (expand load eval)
+  (define (level stx-name t)
+    (let* ((s (symbol->string (syntax->datum stx-name)))
+           (i (string-index s #\?))
+           (fmt (string-replace s "~a" i (+ i 1))))
+      (datum->syntax stx-name (string->symbol (format #f fmt t))))))
+
+; FIXME ellipsis n0 ...
+; FIXME export from here.
+(define-syntax define-sdcz
+  (lambda (x)
+    (syntax-case x ()
+      ((_ definer n0 n1)
+       #`(begin
+           (definer f32 #,(level #'n0 's) #,(level #'n1 's))
+           (definer f64 #,(level #'n0 'd) #,(level #'n1 'd))
+           (definer c32 #,(level #'n0 'c) #,(level #'n1 'c))
+           (definer c64 #,(level #'n0 'z) #,(level #'n1 'z))))
+      ((_ definer n0 n1 n2)
+       #`(begin
+           (definer f32 #,(level #'n0 's) #,(level #'n1 's) #,(level #'n2 's))
+           (definer f64 #,(level #'n0 'd) #,(level #'n1 'd) #,(level #'n2 'd))
+           (definer c32 #,(level #'n0 'c) #,(level #'n1 'c) #,(level #'n2 'c))
+           (definer c64 #,(level #'n0 'z) #,(level #'n1 'z) #,(level #'n2 'z)))))))
+
 
 ; -----------------------------
 ; BLIS flags
@@ -46,6 +71,9 @@
 (define BLIS_TRANSPOSE 8)
 (define BLIS_CONJ_NO_TRANSPOSE 16)
 (define BLIS_CONJ_TRANSPOSE 24)
+
+(define BLIS_NO_CONJUGATE 0)
+(define BLIS_CONJUGATE (ash 1 4))
 
 (define (fliptr t)
   (cond
@@ -63,12 +91,8 @@
    ((= t BLIS_CONJ_TRANSPOSE) #t)
    (else (throw 'bad-transpose-2 t))))
 
-(export BLIS_NO_TRANSPOSE BLIS_TRANSPOSE BLIS_CONJ_NO_TRANSPOSE BLIS_CONJ_TRANSPOSE tr? fliptr)
-
-(define BLIS_NO_CONJUGATE 0)
-(define BLIS_CONJUGATE (ash 1 4))
-
-(export BLIS_NO_CONJUGATE BLIS_CONJUGATE)
+(export BLIS_NO_TRANSPOSE BLIS_TRANSPOSE BLIS_CONJ_NO_TRANSPOSE BLIS_CONJ_TRANSPOSE tr? fliptr
+        BLIS_NO_CONJUGATE BLIS_CONJUGATE)
 
 
 ; -----------------------------
@@ -92,7 +116,7 @@ void bli_?axpbyv
 (define-syntax define-axpbyv
   (lambda (x)
     (syntax-case x ()
-      ((_ name! blis-name type)
+      ((_ type blis-name name!)
        (with-syntax
            ((blis-name-string (symbol->string (syntax->datum #'blis-name)))
             (docstring (format #f "(~a conjx [conj_t] alpha [~a] x [#~a(…)] beta [~a] y [#~a(…)])\n\n~a\n"
@@ -113,10 +137,7 @@ void bli_?axpbyv
                           (scalar->arg (quote type) beta)
                           (pointer-to-first Y) (stride Y 0)))))))))
 
-(define-axpbyv saxpbyv! bli_saxpbyv f32)
-(define-axpbyv daxpbyv! bli_daxpbyv f64)
-(define-axpbyv caxpbyv! bli_caxpbyv c32)
-(define-axpbyv zaxpbyv! bli_zaxpbyv c64)
+(define-sdcz define-axpbyv bli_?axpbyv ?axpbyv!)
 
 (define (axpbyv! conjX alpha X beta Y)
   "
@@ -150,7 +171,7 @@ void bli_?axpyv
 (define-syntax define-axpyv
   (lambda (x)
     (syntax-case x ()
-      ((_ name! blis-name type)
+      ((_ type blis-name name!)
        (with-syntax
            ((blis-name-string (symbol->string (syntax->datum #'blis-name)))
             (docstring (format #f "(~a conjx [conj_t] alpha [~a] x [#~a(…)] y [#~a(…)])\n\n~a\n"
@@ -168,12 +189,10 @@ void bli_?axpyv
                (blis-name conjX (array-length X)
                             (scalar->arg (quote type) alpha)
                             (pointer-to-first X) (stride X 0)
-                            (pointer-to-first Y) (stride Y 0)))))))))
+                            (pointer-to-first Y) (stride Y 0)))
+             (export blis-name name!)))))))
 
-(define-axpyv saxpyv! bli_saxpyv f32)
-(define-axpyv daxpyv! bli_daxpyv f64)
-(define-axpyv caxpyv! bli_caxpyv c32)
-(define-axpyv zaxpyv! bli_zaxpyv c64)
+(define-sdcz define-axpyv bli_?axpyv ?axpyv!)
 
 (define (axpyv! conjX alpha X Y)
   "
@@ -187,9 +206,7 @@ See also: saxpyv! daxpyv! caxpyv! zaxpyv! axpbyv!"
      ('f32 saxpyv!) ('f64 daxpyv!) ('c32 caxpyv!) ('c64 zaxpyv!))
    conjX alpha X Y))
 
-(export bli_saxpyv bli_daxpyv bli_caxpyv bli_zaxpyv
-        saxpyv! daxpyv! caxpyv! zaxpyv!
-        axpyv!)
+(export axpyv!)
 
 #|
 rho := conjx(x)^T * conjy(y)
@@ -208,7 +225,7 @@ void bli_?dotv
 (define-syntax define-dotv
   (lambda (x)
     (syntax-case x ()
-      ((_ name blis-name type)
+      ((_ type blis-name name)
        (with-syntax
            ((blis-name-string (symbol->string (syntax->datum #'blis-name)))
             (docstring (format #f "(~a conjx [conj_t] conjy [conj_t] x [#~a(…)] y [#~a(…)])\n\t-> rho [~a]\n\n~a\n"
@@ -228,12 +245,10 @@ void bli_?dotv
                             (pointer-to-first X) (stride X 0)
                             (pointer-to-first Y) (stride Y 0)
                             (pointer-to-first rho))
-                 (array-ref rho)))))))))
+                 (array-ref rho)))
+             (export blis-name name)))))))
 
-(define-dotv sdotv bli_sdotv f32)
-(define-dotv ddotv bli_ddotv f64)
-(define-dotv cdotv bli_cdotv c32)
-(define-dotv zdotv bli_zdotv c64)
+(define-sdcz define-dotv bli_?dotv ?dotv)
 
 (define (dotv conjX conjY X Y)
   "
@@ -247,9 +262,7 @@ See also: sdotv ddotv cdotv vdotv"
      ('f32 sdotv) ('f64 ddotv) ('c32 cdotv) ('c64 zdotv))
    conjX conjY X Y))
 
-(export bli_sdotv bli_ddotv bli_cdotv bli_zdotv
-        sdotv ddotv cdotv zdotv
-        dotv)
+(export dotv)
 
 
 ; -----------------------------
@@ -259,7 +272,7 @@ See also: sdotv ddotv cdotv vdotv"
 (define-syntax define-gemm
   (lambda (x)
     (syntax-case x ()
-      ((_ name! name blis-name srfi4-type)
+      ((_ type blis-name name! name)
        (with-syntax
            ((blis-name-string (symbol->string (syntax->datum #'blis-name))))
          #'(begin
@@ -269,9 +282,9 @@ See also: sdotv ddotv cdotv vdotv"
                                       '* '* inc_t inc_t '* inc_t inc_t
                                       '* '* inc_t inc_t)))
              (define (name! alpha A transA B transB beta C)
-               (check-array A 2 srfi4-type)
-               (check-array B 2 srfi4-type)
-               (check-array C 2 srfi4-type)
+               (check-array A 2 (quote type))
+               (check-array B 2 (quote type))
+               (check-array C 2 (quote type))
                (let ((M (dim C 0))
                      (N (dim C 1))
                      (K (dim A (if (tr? transA) 0 1))))
@@ -279,17 +292,18 @@ See also: sdotv ddotv cdotv vdotv"
                  (unless (= N (dim B (if (tr? transB) 0 1))) (throw 'mismatched-CB))
                  (unless (= K (dim B (if (tr? transB) 1 0))) (throw 'mismatched-AB))
                  (blis-name transA transB M N K
-                            (scalar->arg srfi4-type alpha)
+                            (scalar->arg (quote type) alpha)
                             (pointer-to-first A) (stride A 0) (stride A 1)
                             (pointer-to-first B) (stride B 0) (stride B 1)
-                            (scalar->arg srfi4-type beta)
+                            (scalar->arg (quote type) beta)
                             (pointer-to-first C) (stride C 0) (stride C 1))))
              (define (name alpha A transA B transB)
-               (let ((C (make-typed-array srfi4-type *unspecified*
+               (let ((C (make-typed-array (quote type) *unspecified*
                                           (dim A (if (tr? transA) 1 0))
                                           (dim B (if (tr? transB) 0 1)))))
                  (name! alpha A transA B transB 0. C)
-                 C))))))))
+                 C))
+             (export blis-name name! name)))))))
 
 ;; void bli_?gemm( trans_t transa,
 ;;                 trans_t transb,
@@ -302,14 +316,7 @@ See also: sdotv ddotv cdotv vdotv"
 ;;                 ctype*  beta,
 ;;                 ctype*  c, inc_t rsc, inc_t csc )
 
-(define-gemm sgemm! sgemm bli_sgemm 'f32)
-(define-gemm dgemm! dgemm bli_dgemm 'f64)
-(define-gemm cgemm! cgemm bli_cgemm 'c32)
-(define-gemm zgemm! zgemm bli_zgemm 'c64)
-
-(export bli_sgemm bli_dgemm bli_cgemm bli_zgemm
-        sgemm! dgemm! cgemm! zgemm!
-        sgemm dgemm cgemm zgemm)
+(define-sdcz define-gemm bli_?gemm ?gemm! ?gemm)
 
 
 ; -----------------------------
@@ -319,7 +326,7 @@ See also: sdotv ddotv cdotv vdotv"
 (define-syntax define-gemv
   (lambda (x)
     (syntax-case x ()
-      ((_ name! name blis-name srfi4-type)
+      ((_ type blis-name name! name)
        (with-syntax
            ((blis-name-string (symbol->string (syntax->datum #'blis-name))))
          #'(begin
@@ -328,24 +335,25 @@ See also: sdotv ddotv cdotv vdotv"
                                 (list trans_t conj_t dim_t dim_t '* '* inc_t inc_t
                                       '* inc_t '* '* inc_t)))
              (define (name! alpha A transA X conjX beta Y)
-               (check-array A 2 srfi4-type)
-               (check-array X 1 srfi4-type)
-               (check-array Y 1 srfi4-type)
+               (check-array A 2 (quote type))
+               (check-array X 1 (quote type))
+               (check-array Y 1 (quote type))
                (let ((M (array-length Y))
                      (N (array-length X)))
                  (unless (= M (dim A (if (tr? transA) 1 0))) (throw 'mismatched-YA))
                  (unless (= N (dim A (if (tr? transA) 0 1))) (throw 'mismatched-XA))
                  (blis-name transA conjX M N
-                            (scalar->arg srfi4-type alpha)
+                            (scalar->arg (quote type) alpha)
                             (pointer-to-first A) (stride A 0) (stride A 1)
                             (pointer-to-first X) (stride X 0)
-                            (scalar->arg srfi4-type beta)
+                            (scalar->arg (quote type) beta)
                             (pointer-to-first Y) (stride Y 0))))
              (define (name alpha A transA X conjX)
-               (let ((Y (make-typed-array srfi4-type *unspecified*
+               (let ((Y (make-typed-array (quote type) *unspecified*
                                           (dim A (if (tr? transA) 1 0)))))
                  (name! alpha A transA X conjX 0. Y)
-                 Y))))))))
+                 Y))
+             (export blis-name name! name)))))))
 
 ;; void bli_?gemv( trans_t transa,
 ;;                 conj_t  conjx,
@@ -357,14 +365,7 @@ See also: sdotv ddotv cdotv vdotv"
 ;;                 ctype*  beta,
 ;;                 ctype*  y, inc_t incy );
 
-(define-gemv sgemv! sgemv bli_sgemv 'f32)
-(define-gemv dgemv! dgemv bli_dgemv 'f64)
-(define-gemv cgemv! cgemv bli_cgemv 'c32)
-(define-gemv zgemv! zgemv bli_zgemv 'c64)
-
-(export bli_sgemv bli_dgemv bli_cgemv bli_zgemv
-        sgemv! dgemv! cgemv! zgemv!
-        sgemv dgemv cgemv zgemv)
+(define-sdcz define-gemv bli_?gemv ?gemv! ?gemv)
 
 
 ; -----------------------------
@@ -374,7 +375,7 @@ See also: sdotv ddotv cdotv vdotv"
 (define-syntax define-ger
   (lambda (x)
     (syntax-case x ()
-      ((_ name! name blis-name srfi4-type)
+      ((_ type blis-name name! name)
        (with-syntax
            ((blis-name-string (symbol->string (syntax->datum #'blis-name))))
          #'(begin
@@ -383,23 +384,24 @@ See also: sdotv ddotv cdotv vdotv"
                                 (list conj_t conj_t dim_t dim_t '* '* inc_t '* inc_t
                                       '* inc_t inc_t)))
              (define (name! alpha X conjX Y conjY A)
-               (check-array A 2 srfi4-type)
-               (check-array X 1 srfi4-type)
-               (check-array Y 1 srfi4-type)
+               (check-array A 2 (quote type))
+               (check-array X 1 (quote type))
+               (check-array Y 1 (quote type))
                (let ((M (array-length X))
                      (N (array-length Y)))
                  (unless (= M (dim A 0)) (throw 'mismatched-XA))
                  (unless (= N (dim A 1)) (throw 'mismatched-YA))
                  (blis-name conjX conjY (array-length X) (array-length Y)
-                            (scalar->arg srfi4-type alpha)
+                            (scalar->arg (quote type) alpha)
                             (pointer-to-first X) (stride X 0)
                             (pointer-to-first Y) (stride Y 0)
                             (pointer-to-first A) (stride A 0) (stride A 1))))
              (define (name alpha X conjX Y conjY)
-               (let ((A (make-typed-array srfi4-type *unspecified*
+               (let ((A (make-typed-array (quote type) *unspecified*
                                           (array-length X) (array-length Y))))
                  (name! alpha X conjX Y conjY A)
-                 A))))))))
+                 A))
+             (export blis-name name! name)))))))
 
 ;; void bli_?ger( conj_t  conjx,
 ;;                conj_t  conjy,
@@ -410,11 +412,4 @@ See also: sdotv ddotv cdotv vdotv"
 ;;                ctype*  y, inc_t incy,
 ;;                ctype*  a, inc_t rsa, inc_t csa );
 
-(define-ger sger! sger bli_sger 'f32)
-(define-ger dger! dger bli_dger 'f64)
-(define-ger cger! cger bli_cger 'c32)
-(define-ger zger! zger bli_zger 'c64)
-
-(export bli_sger bli_dger bli_cger bli_zger
-        sger! dger! cger! zger!
-        sger dger cger zger)
+(define-sdcz define-ger bli_?ger ?ger! ?ger)

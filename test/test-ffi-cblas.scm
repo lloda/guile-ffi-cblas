@@ -1,6 +1,6 @@
 
 ; Tests for (ffi cblas).
-; (c) Daniel Llorens - 2014, 2017
+; (c) Daniel Llorens - 2014, 2017, 2019
 
 ; This library is free software; you can redistribute it and/or modify it under
 ; the terms of the GNU General Public License as published by the Free
@@ -208,26 +208,23 @@
       (test-begin case-name)
       (let ((Y1 (array-copy Y))
             (Y2 (array-copy Y)))
-        (gemv! 2. A CblasNoTrans X 3. Y1)  ; @TODO Test other values of transA
+        (gemv! 2. A CblasNoTrans X 3. Y1)  ; TODO Test other values of transA
         (ref-gemv! 2. A X 3. Y2)
         (test-equal Y1 Y2)
         (test-equal A A1)
         (test-equal X X1)
         (test-end case-name)))))
 
-(map
+(for-each
  (match-lambda
-     ((srfi4-type gemv!)
-      (for-each
-       (lambda (make-A)
-         (for-each
-          (lambda (make-X)
-            (for-each
-             (lambda (make-Y)
-               (test-gemv srfi4-type gemv! make-A make-X make-Y))
-             (list make-v-compact make-v-offset make-v-strided)))
-          (list make-v-compact make-v-offset make-v-strided)))
-       (list make-M-c-order make-M-fortran-order make-M-offset make-M-strided))))
+   ((srfi4-type gemv!)
+    (for-each
+        (match-lambda ((make-A make-X make-Y)
+                       (test-gemv srfi4-type gemv! make-A make-X make-Y)))
+      (list-product
+       (list make-M-c-order make-M-fortran-order make-M-offset make-M-strided)
+       (list make-v-compact make-v-offset make-v-strided)
+       (list make-v-compact make-v-offset make-v-strided)))))
  `((f64 ,dgemv!)
    (f32 ,sgemv!)
    (c64 ,zgemv!)
@@ -235,27 +232,27 @@
 
 
 ; ---------------------------------
-; @TODO snrm2, dnrm2, cnrm2, znrm2
+; TODO snrm2, dnrm2, cnrm2, znrm2
 ; ---------------------------------
 
 
 ; ---------------------------------
-; @TODO sasum, dasum, casum, zasum
+; TODO sasum, dasum, casum, zasum
 ; ---------------------------------
 
 
 ; ---------------------------------
-; @TODO sscal, dscal, cscal, zscal, csscal, zdscal
+; TODO sscal, dscal, cscal, zscal, csscal, zdscal
 ; ---------------------------------
 
 
 ; ---------------------------------
-; @TODO sger, dger, cgeru, cgerc, zgeru, zgerc
+; TODO sger, dger, cgeru, cgerc, zgeru, zgerc
 ; ---------------------------------
 
 
 ; ---------------------------------
-; @TODO isamax idamax icamax izamax
+; TODO isamax idamax icamax izamax
 ; ---------------------------------
 
 
@@ -283,52 +280,45 @@
         (BB (array-copy B)))
     (gemm! alpha A transA B transB beta C1)
     (ref-gemm! alpha A transA B transB beta C2)
-    ;; (test-approximate-array tag C1 C2 1e-15) ; @TODO  as a single test.
+    ;; (test-approximate-array tag C1 C2 1e-15) ; TODO  as a single test.
     (test-begin tag)
     (test-equal C1 C2)
     (test-end tag)))
 
-(map
- (match-lambda
-     ((srfi4-type gemm!)
+(for-each
+    (match-lambda
+      ((srfi4-type gemm!)
 ; some extra tests with non-square matrices.
-      (let ((A (fill-A2! (make-typed-array srfi4-type *unspecified* 4 3)))
-            (B (fill-A2! (make-typed-array srfi4-type *unspecified* 3 5)))
-            (C (fill-A2! (make-typed-array srfi4-type *unspecified* 4 5))))
-        (test-gemm "gemm-1" gemm! 1. A CblasNoTrans B CblasNoTrans 1. C)
-        (test-gemm "gemm-2" gemm! 1. A CblasTrans C CblasNoTrans 1. B)
-        (test-gemm "gemm-3" gemm! 1. C CblasNoTrans B CblasTrans 1. A))
-      (let ((A (fill-A2! (transpose-array (make-typed-array 'f64 *unspecified* 4 3) 1 0)))
-            (B (fill-A2! (transpose-array (make-typed-array 'f64 *unspecified* 3 5) 1 0)))
-            (C (fill-A2! (transpose-array (make-typed-array 'f64 *unspecified* 4 5) 1 0))))
-        (test-gemm "gemm-4" dgemm! 1. A CblasTrans B CblasTrans 1. (transpose-array C 1 0))
-        (test-gemm "gemm-5" dgemm! 1. A CblasNoTrans C CblasTrans 1. (transpose-array B 1 0))
-        (test-gemm "gemm-6" dgemm! 1. C CblasTrans B CblasNoTrans 1. (transpose-array A 1 0)))
-      (for-each
-       (lambda (make-A)
-         (for-each
-          (lambda (make-B)
-            (for-each
-             (lambda (make-C)
-               (for-each
-                (lambda (transA)
-                  (for-each
-                   (lambda (transB)
-                     (test-gemm (format #f "gemm:~a:~a:~a:~a:~a:~a" srfi4-type (procedure-name make-A)
-                                        (procedure-name make-B) (procedure-name make-C)
-                                        transA transB)
-                                gemm! 3. (fill-A2! (make-A srfi4-type)) transA
-                                (fill-A2! (make-B srfi4-type)) transB
-                                2. (fill-A2! (make-C srfi4-type))))
-; @TODO Conj, etc. for c32/c64.
-                   (list CblasTrans CblasNoTrans)))
-                (list CblasTrans CblasNoTrans)))
-             (list make-M-c-order make-M-fortran-order make-M-offset make-M-strided)))
-          (list make-M-c-order make-M-fortran-order make-M-offset make-M-strided)))
-       (list make-M-c-order make-M-fortran-order make-M-offset make-M-strided))))
- `((f32 ,sgemm!)
-   (f64 ,dgemm!)
-   (c32 ,cgemm!)
-   (c64 ,zgemm!)))
+       (let ((A (fill-A2! (make-typed-array srfi4-type *unspecified* 4 3)))
+             (B (fill-A2! (make-typed-array srfi4-type *unspecified* 3 5)))
+             (C (fill-A2! (make-typed-array srfi4-type *unspecified* 4 5))))
+         (test-gemm "gemm-1" gemm! 1. A CblasNoTrans B CblasNoTrans 1. C)
+         (test-gemm "gemm-2" gemm! 1. A CblasTrans C CblasNoTrans 1. B)
+         (test-gemm "gemm-3" gemm! 1. C CblasNoTrans B CblasTrans 1. A))
+       (let ((A (fill-A2! (transpose-array (make-typed-array 'f64 *unspecified* 4 3) 1 0)))
+             (B (fill-A2! (transpose-array (make-typed-array 'f64 *unspecified* 3 5) 1 0)))
+             (C (fill-A2! (transpose-array (make-typed-array 'f64 *unspecified* 4 5) 1 0))))
+         (test-gemm "gemm-4" dgemm! 1. A CblasTrans B CblasTrans 1. (transpose-array C 1 0))
+         (test-gemm "gemm-5" dgemm! 1. A CblasNoTrans C CblasTrans 1. (transpose-array B 1 0))
+         (test-gemm "gemm-6" dgemm! 1. C CblasTrans B CblasNoTrans 1. (transpose-array A 1 0)))
+       (for-each
+           (match-lambda ((make-A make-B make-C transA transB)
+                          (test-gemm (format #f "gemm:~a:~a:~a:~a:~a:~a" srfi4-type (procedure-name make-A)
+                                             (procedure-name make-B) (procedure-name make-C)
+                                             transA transB)
+                                     gemm! 3. (fill-A2! (make-A srfi4-type)) transA
+                                     (fill-A2! (make-B srfi4-type)) transB
+                                     2. (fill-A2! (make-C srfi4-type)))))
+         (list-product
+          (list make-M-c-order make-M-fortran-order make-M-offset make-M-strided)
+          (list make-M-c-order make-M-fortran-order make-M-offset make-M-strided)
+          (list make-M-c-order make-M-fortran-order make-M-offset make-M-strided)
+; TODO Conj, etc. for c32/c64.
+          (list CblasTrans CblasNoTrans)
+          (list CblasTrans CblasNoTrans)))))
+  `((f32 ,sgemm!)
+    (f64 ,dgemm!)
+    (c32 ,cgemm!)
+    (c64 ,zgemm!)))
 
 (exit (test-runner-fail-count (test-runner-current)))
