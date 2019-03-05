@@ -253,35 +253,6 @@ LEVEL 3
 
 
 ; -----------------------------
-; x -> i: isamax idamax icamax izamax
-; -----------------------------
-
-; TODO pointer-to-this-value support in the ffi, for old C decls that take double * for complex.
-(define-syntax define-iamax
-  (lambda (x)
-    (syntax-case x ()
-      ((_ name cblas-name srfi4-type)
-       (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name))))
-         #'(begin
-             (define cblas-name (pointer->procedure int
-                                                    (dynamic-func cblas-name-string libcblas)
-                                                    (list int '* int)))
-             (define (name X)
-               (check-array X 1 srfi4-type)
-               (cblas-name (array-length X)
-                           (pointer-to-first X) (stride X 0)))))))))
-
-; int cblas_isamax (const int N, const float *X, const int incX)
-(define-iamax isamax cblas_isamax 'f32)
-(define-iamax idamax cblas_idamax 'f64)
-(define-iamax icamax cblas_icamax 'c32)
-(define-iamax izamax cblas_izamax 'c64)
-
-(export cblas_isamax cblas_idamax cblas_icamax cblas_izamax
-        isamax idamax icamax izamax)
-
-
-; -----------------------------
 ; sum_i(a_i * b_i): sdot ddot cdotu cdotc zdotu zdotc
 ; -----------------------------
 
