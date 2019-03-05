@@ -35,27 +35,6 @@
 (define (scalar->arg srfi4-type a)
   (pointer-to-first (make-typed-array srfi4-type a)))
 
-(eval-when (expand load eval)
-  (define (subst-qmark stx-name t)
-    (let* ((s (symbol->string (syntax->datum stx-name)))
-           (i (string-index s #\?))
-           (fmt (string-replace s "~a" i (+ i 1))))
-      (datum->syntax stx-name (string->symbol (format #f fmt t))))))
-
-(define-syntax define-sdcz
-  (lambda (x)
-    (syntax-case x ()
-      ((_ definer n ...)
-       (cons #'begin
-             (append-map
-              (lambda (tag t)
-                (let ((fun (map (cut subst-qmark <> t) (syntax->list #'(n ...)))))
-; #`(quote #,(datum->syntax x tag)) to pass a symbol, but assembling docstrings seems harder (?)
-                  (list (cons* #'definer (datum->syntax x tag) fun)
-                        (cons* #'export fun))))
-              '(f32 f64 c32 c64)
-              '(s d c z)))))))
-
 
 ; -----------------------------
 ; BLIS flags

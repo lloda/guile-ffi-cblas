@@ -227,9 +227,10 @@ LEVEL 3
                      (docstring (string-append (symbol->string (syntax->datum #'cblas-name))
                                                " a b -> (values c s)")))
          #'(begin
-             (define cblas-name (pointer->procedure void
-                                                    (dynamic-func cblas-name-string libcblas)
-                                                    (list '* '* '* '*)))
+             (define cblas-name
+               (pointer->procedure
+                void (dynamic-func cblas-name-string libcblas)
+                (list '* '* '* '*)))
              (define (name a b)
                docstring
                (let ((a (make-typed-array ctype a))
@@ -262,9 +263,10 @@ LEVEL 3
       ((_ name cblas-name srfi4-type)
        (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name))))
          #'(begin
-             (define cblas-name (pointer->procedure (srfi4-type->type srfi4-type)
-                                                    (dynamic-func cblas-name-string libcblas)
-                                                    (list int '* int '* int)))
+             (define cblas-name
+               (pointer->procedure
+                (srfi4-type->type srfi4-type) (dynamic-func cblas-name-string libcblas)
+                (list int '* int '* int)))
              (define (name A B)
                (check-2-arrays A B 1 srfi4-type)
                (cblas-name (array-length A)
@@ -284,9 +286,10 @@ LEVEL 3
       ((_ name cblas-name srfi4-type)
        (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name))))
          #'(begin
-             (define cblas-name (pointer->procedure void
-                                                    (dynamic-func cblas-name-string libcblas)
-                                                    (list int '* int '* int '*)))
+             (define cblas-name
+               (pointer->procedure
+                void (dynamic-func cblas-name-string libcblas)
+                (list int '* int '* int '*)))
              (define (name A B)
                (check-2-arrays A B 1 srfi4-type)
                (let ((C (make-typed-array srfi4-type *unspecified*)))
@@ -314,26 +317,22 @@ LEVEL 3
 (define-syntax define-copy
   (lambda (x)
     (syntax-case x ()
-      ((_ name cblas-name srfi4-type)
-       (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name))))
+      ((_ srfi4-type name cblas-name)
+       (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name)))
+                     (type #'(quote srfi4-type)))
          #'(begin
-             (define cblas-name (pointer->procedure void
-                                                    (dynamic-func cblas-name-string libcblas)
-                                                    (list int '* int '* int)))
+             (define cblas-name
+               (pointer->procedure
+                void (dynamic-func cblas-name-string libcblas)
+                (list int '* int '* int)))
              (define (name X Y)
-               (check-2-arrays X Y 1 srfi4-type)
+               (check-2-arrays X Y 1 type)
                (cblas-name (array-length X)
                            (pointer-to-first X) (stride X 0)
                            (pointer-to-first Y) (stride Y 0)))))))))
 
 ; void cblas_scopy (const int N, const float *X, const int incX, float *Y, const int incY)
-(define-copy scopy! cblas_scopy 'f32)
-(define-copy dcopy! cblas_dcopy 'f64)
-(define-copy ccopy! cblas_ccopy 'c32)
-(define-copy zcopy! cblas_zcopy 'c64)
-
-(export cblas_scopy cblas_dcopy cblas_ccopy cblas_zcopy
-        scopy! dcopy! ccopy! zcopy!)
+(define-sdcz define-copy ?copy! cblas_?copy)
 
 
 ; -----------------------------
@@ -344,26 +343,22 @@ LEVEL 3
 (define-syntax define-swap
   (lambda (x)
     (syntax-case x ()
-      ((_ name cblas-name srfi4-type)
-       (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name))))
+      ((_ srfi4-type name cblas-name)
+       (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name)))
+                     (type #'(quote srfi4-type)))
          #'(begin
-             (define cblas-name (pointer->procedure void
-                                                    (dynamic-func cblas-name-string libcblas)
-                                                    (list int '* int '* int)))
+             (define cblas-name
+               (pointer->procedure
+                void (dynamic-func cblas-name-string libcblas)
+                (list int '* int '* int)))
              (define (name X Y)
-               (check-2-arrays X Y 1 srfi4-type)
+               (check-2-arrays X Y 1 type)
                (cblas-name (array-length X)
                            (pointer-to-first X) (stride X 0)
                            (pointer-to-first Y) (stride Y 0)))))))))
 
 ; void cblas_sswap (const int N, const float *X, const int incX, float *Y, const int incY)
-(define-swap sswap! cblas_sswap 'f32)
-(define-swap dswap! cblas_dswap 'f64)
-(define-swap cswap! cblas_cswap 'c32)
-(define-swap zswap! cblas_zswap 'c64)
-
-(export cblas_sswap cblas_dswap cblas_cswap cblas_zswap
-        sswap! dswap! cswap! zswap!)
+(define-sdcz define-swap ?swap! cblas_?swap)
 
 
 ; -----------------------------
@@ -374,26 +369,22 @@ LEVEL 3
 (define-syntax define-axpy
   (lambda (x)
     (syntax-case x ()
-      ((_ name cblas-name srfi4-type)
-       (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name))))
+      ((_ srfi4-type name cblas-name)
+       (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name)))
+                     (type #'(quote srfi4-type)))
          #'(begin
-             (define cblas-name (pointer->procedure void
-                                                    (dynamic-func cblas-name-string libcblas)
-                                                    (list int (srfi4-type->type srfi4-type) '* int '* int)))
+             (define cblas-name
+               (pointer->procedure
+                void (dynamic-func cblas-name-string libcblas)
+                (list int (srfi4-type->type type) '* int '* int)))
              (define (name a X Y)
-               (check-2-arrays X Y 1 srfi4-type)
-               (cblas-name (array-length X) (scalar->arg srfi4-type a)
+               (check-2-arrays X Y 1 type)
+               (cblas-name (array-length X) (scalar->arg type a)
                            (pointer-to-first X) (stride X 0)
                            (pointer-to-first Y) (stride Y 0)))))))))
 
 ; void cblas_saxpy (const int N, const float alpha, const float *X, const int incX, float *Y, const int incY)
-(define-axpy saxpy! cblas_saxpy 'f32)
-(define-axpy daxpy! cblas_daxpy 'f64)
-(define-axpy caxpy! cblas_caxpy 'c32)
-(define-axpy zaxpy! cblas_zaxpy 'c64)
-
-(export cblas_saxpy cblas_daxpy cblas_caxpy cblas_zaxpy
-        saxpy! daxpy! caxpy! zaxpy!)
+(define-sdcz define-axpy ?axpy! cblas_?axpy)
 
 
 ; -----------------------------
@@ -406,10 +397,10 @@ LEVEL 3
       ((_ name cblas-name srfi4-type scalar-srfi4-type)
        (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name))))
          #'(begin
-             (define cblas-name (pointer->procedure
-                                 void
-                                 (dynamic-func cblas-name-string libcblas)
-                                 (list int (srfi4-type->type scalar-srfi4-type) '* int)))
+             (define cblas-name
+               (pointer->procedure
+                void (dynamic-func cblas-name-string libcblas)
+                (list int (srfi4-type->type scalar-srfi4-type) '* int)))
              (define (name alpha X)
                (check-array X 1 srfi4-type)
                (cblas-name (array-length X) (scalar->arg scalar-srfi4-type alpha)
@@ -440,10 +431,10 @@ LEVEL 3
       ((_ name cblas-name srfi4-type)
        (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name))))
          #'(begin
-             (define cblas-name (pointer->procedure
-                                 (srfi4-type->real-type srfi4-type)
-                                 (dynamic-func cblas-name-string libcblas)
-                                 (list int '* int)))
+             (define cblas-name
+               (pointer->procedure
+                (srfi4-type->real-type srfi4-type) (dynamic-func cblas-name-string libcblas)
+                (list int '* int)))
              (define (name X)
                (check-array X 1 srfi4-type)
                (cblas-name (array-length X) (pointer-to-first X) (stride X 0)))))))))
@@ -476,25 +467,20 @@ LEVEL 3
 (define-syntax define-iamax
   (lambda (x)
     (syntax-case x ()
-      ((_ name cblas-name srfi4-type)
-       (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name))))
+      ((_ srfi4-type name cblas-name)
+       (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name)))
+                     (type #'(quote srfi4-type)))
          #'(begin
-             (define cblas-name (pointer->procedure
-                                 int
-                                 (dynamic-func cblas-name-string libcblas)
-                                 (list int '* int)))
+             (define cblas-name
+               (pointer->procedure
+                int (dynamic-func cblas-name-string libcblas)
+                (list int '* int)))
              (define (name X)
-               (check-array X 1 srfi4-type)
+               (check-array X 1 type)
                (cblas-name (array-length X) (pointer-to-first X) (stride X 0)))))))))
 
 ; int cblas_isamax (const int N, const float *X, const int incX)
-(define-iamax isamax cblas_isamax 'f32)
-(define-iamax idamax cblas_idamax 'f64)
-(define-iamax icamax cblas_icamax 'c32)
-(define-iamax izamax cblas_izamax 'c64)
-
-(export cblas_isamax cblas_idamax cblas_icamax cblas_izamax
-        isamax idamax icamax izamax)
+(define-sdcz define-iamax i?amax cblas_i?amax)
 
 
 ; -----------------------------
@@ -516,10 +502,10 @@ LEVEL 3
       ((_ name cblas-name srfi4-type)
        (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name))))
          #'(begin
-             (define cblas-name (pointer->procedure
-                                 void
-                                 (dynamic-func cblas-name-string libcblas)
-                                 (list int int int (srfi4-type->type srfi4-type) '* int '* int '* int)))
+             (define cblas-name
+               (pointer->procedure
+                void (dynamic-func cblas-name-string libcblas)
+                (list int int int (srfi4-type->type srfi4-type) '* int '* int '* int)))
              (define (name alpha X Y A)
                (check-arrays-AXY A Y X srfi4-type)
                (let-values (((A-lead A-order) (lead-and-order A)))
@@ -557,14 +543,15 @@ LEVEL 3
 (define-syntax define-gemv
   (lambda (x)
     (syntax-case x ()
-      ((_ name cblas-name srfi4-type)
-       (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name))))
+      ((_ srfi4-type name cblas-name)
+       (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name)))
+                     (type #'(quote srfi4-type)))
          #'(begin
-             (define cblas-name (pointer->procedure
-                                 void
-                                 (dynamic-func cblas-name-string libcblas)
-                                 (list int int int int (srfi4-type->type srfi4-type) '* int
-                                       '* int (srfi4-type->type srfi4-type) '* int)))
+             (define cblas-name
+               (pointer->procedure
+                void (dynamic-func cblas-name-string libcblas)
+                (list int int int int (srfi4-type->type type) '* int
+                      '* int (srfi4-type->type type) '* int)))
              (define (name alpha A TransA X beta Y)
                (let ((M (dim A 0))
                      (N (dim A 1)))
@@ -572,21 +559,15 @@ LEVEL 3
                  (unless (= N (array-length X)) (throw 'mismatched-AX N (array-length X)))
                  (let-values (((A-lead A-order) (lead-and-order A)))
                    (cblas-name A-order TransA
-                               M N (scalar->arg srfi4-type alpha)
+                               M N (scalar->arg type alpha)
                                (pointer-to-first A) A-lead
-                               (pointer-to-first X) (stride X 0) (scalar->arg srfi4-type beta)
+                               (pointer-to-first X) (stride X 0) (scalar->arg type beta)
                                (pointer-to-first Y) (stride Y 0)))))))))))
 
 ; void cblas_sgemv (const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE TransA,
 ;                   const int M, const int N, const float alpha, const float *A, const int lda,
 ;                   const float *X, const int incX, const float beta, float *Y, const int incY)
-(define-gemv sgemv! cblas_sgemv 'f32)
-(define-gemv dgemv! cblas_dgemv 'f64)
-(define-gemv zgemv! cblas_zgemv 'c64)
-(define-gemv cgemv! cblas_cgemv 'c32)
-
-(export cblas_dgemv cblas_sgemv cblas_zgemv cblas_cgemv
-        dgemv! sgemv! zgemv! cgemv!)
+(define-sdcz define-gemv ?gemv! cblas_?gemv)
 
 
 ; -----------------------------
@@ -596,19 +577,20 @@ LEVEL 3
 (define-syntax define-gemm
   (lambda (x)
     (syntax-case x ()
-      ((_ name cblas-name srfi4-type)
-       (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name))))
+      ((_ srfi4-type name cblas-name)
+       (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name)))
+                     (type #'(quote srfi4-type)))
          #'(begin
-             (define cblas-name (pointer->procedure
-                                 void
-                                 (dynamic-func cblas-name-string libcblas)
-                                 (list int int int int int int
-                                       (srfi4-type->type srfi4-type) '* int '* int
-                                       (srfi4-type->type srfi4-type) '* int)))
+             (define cblas-name
+               (pointer->procedure
+                void (dynamic-func cblas-name-string libcblas)
+                (list int int int int int int
+                      (srfi4-type->type type) '* int '* int
+                      (srfi4-type->type type) '* int)))
              (define (name alpha A TransA B TransB beta C)
-               (check-array A 2 srfi4-type)
-               (check-array B 2 srfi4-type)
-               (check-array C 2 srfi4-type)
+               (check-array A 2 type)
+               (check-array B 2 type)
+               (check-array C 2 type)
                (let-values (((A-lead A-order) (lead-and-order A))
                             ((B-lead B-order) (lead-and-order B))
                             ((C-lead C-order) (lead-and-order C)))
@@ -621,10 +603,10 @@ LEVEL 3
                    (let ((TransA (if (eqv? C-order A-order) TransA (fliptr TransA)))
                          (TransB (if (eqv? C-order B-order) TransB (fliptr TransB))))
                      (cblas-name C-order TransA TransB M N K
-                                 (scalar->arg srfi4-type alpha)
+                                 (scalar->arg type alpha)
                                  (pointer-to-first A) A-lead
                                  (pointer-to-first B) B-lead
-                                 (scalar->arg srfi4-type beta)
+                                 (scalar->arg type beta)
                                  (pointer-to-first C) C-lead)))))))))))
 
 ; void cblas_sgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE TransA,
@@ -632,10 +614,4 @@ LEVEL 3
 ;                  const int K, const float alpha, const float *A,
 ;                  const int lda, const float *B, const int ldb,
 ;                  const float beta, float *C, const int ldc)
-(define-gemm sgemm! cblas_sgemm 'f32)
-(define-gemm dgemm! cblas_dgemm 'f64)
-(define-gemm cgemm! cblas_cgemm 'c32)
-(define-gemm zgemm! cblas_zgemm 'c64)
-
-(export cblas_sgemm cblas_dgemm cblas_cgemm cblas_zgemm
-        sgemm! dgemm! cgemm! zgemm!)
+(define-sdcz define-gemm ?gemm! cblas_?gemm)
