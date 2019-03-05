@@ -8,7 +8,7 @@
 ; later version.
 
 (define-module (ffi blis))
-(import (system foreign) (srfi srfi-1) (srfi srfi-11) (ffi arrays) (ice-9 match))
+(import (system foreign) (srfi srfi-1) (srfi srfi-11) (ffi arrays) (ice-9 match) (srfi srfi-26))
 
 ; TODO As an alternative go through installation.
 (define libblis (dynamic-link (let ((lpath (getenv "GUILE_FFI_CBLAS_LIBBLIS_PATH"))
@@ -36,29 +36,25 @@
   (pointer-to-first (make-typed-array srfi4-type a)))
 
 (eval-when (expand load eval)
-  (define (level stx-name t)
+  (define (subst-qmark stx-name t)
     (let* ((s (symbol->string (syntax->datum stx-name)))
            (i (string-index s #\?))
            (fmt (string-replace s "~a" i (+ i 1))))
       (datum->syntax stx-name (string->symbol (format #f fmt t))))))
 
-; FIXME ellipsis n0 ...
-; FIXME export from here.
 (define-syntax define-sdcz
   (lambda (x)
     (syntax-case x ()
-      ((_ definer n0 n1)
-       #`(begin
-           (definer f32 #,(level #'n0 's) #,(level #'n1 's))
-           (definer f64 #,(level #'n0 'd) #,(level #'n1 'd))
-           (definer c32 #,(level #'n0 'c) #,(level #'n1 'c))
-           (definer c64 #,(level #'n0 'z) #,(level #'n1 'z))))
-      ((_ definer n0 n1 n2)
-       #`(begin
-           (definer f32 #,(level #'n0 's) #,(level #'n1 's) #,(level #'n2 's))
-           (definer f64 #,(level #'n0 'd) #,(level #'n1 'd) #,(level #'n2 'd))
-           (definer c32 #,(level #'n0 'c) #,(level #'n1 'c) #,(level #'n2 'c))
-           (definer c64 #,(level #'n0 'z) #,(level #'n1 'z) #,(level #'n2 'z)))))))
+      ((_ definer n ...)
+       (cons #'begin
+             (append-map
+              (lambda (tag t)
+                (let ((fun (map (cut subst-qmark <> t) (syntax->list #'(n ...)))))
+; #`(quote #,(datum->syntax x tag)) to pass a symbol, but assembling docstrings seems harder (?)
+                  (list (cons* #'definer (datum->syntax x tag) fun)
+                        (cons* #'export fun))))
+              '(f32 f64 c32 c64)
+              '(s d c z)))))))
 
 
 ; -----------------------------
@@ -151,9 +147,7 @@ See also: saxpbyv! daxpbyv! caxpbyv! zaxpbyv! axpyv!"
      (('f32 saxpbyv!) ('f64 daxpbyv!) ('c32 caxpbyv!) ('c64 saxpbyv!)))
    conjX alpha X beta Y))
 
-(export bli_saxpbyv bli_daxpbyv bli_caxpbyv bli_zaxpbyv
-        saxpbyv! daxpbyv! caxpbyv! zaxpbyv!
-        axpbyv!)
+(export axpbyv!)
 
 #|
 y := y + alpha * conjx(x)
@@ -189,8 +183,7 @@ void bli_?axpyv
                (blis-name conjX (array-length X)
                             (scalar->arg (quote type) alpha)
                             (pointer-to-first X) (stride X 0)
-                            (pointer-to-first Y) (stride Y 0)))
-             (export blis-name name!)))))))
+                            (pointer-to-first Y) (stride Y 0)))))))))
 
 (define-sdcz define-axpyv bli_?axpyv ?axpyv!)
 
@@ -245,8 +238,7 @@ void bli_?dotv
                             (pointer-to-first X) (stride X 0)
                             (pointer-to-first Y) (stride Y 0)
                             (pointer-to-first rho))
-                 (array-ref rho)))
-             (export blis-name name)))))))
+                 (array-ref rho)))))))))
 
 (define-sdcz define-dotv bli_?dotv ?dotv)
 
@@ -302,8 +294,7 @@ See also: sdotv ddotv cdotv vdotv"
                                           (dim A (if (tr? transA) 1 0))
                                           (dim B (if (tr? transB) 0 1)))))
                  (name! alpha A transA B transB 0. C)
-                 C))
-             (export blis-name name! name)))))))
+                 C))))))))
 
 ;; void bli_?gemm( trans_t transa,
 ;;                 trans_t transb,
@@ -352,8 +343,7 @@ See also: sdotv ddotv cdotv vdotv"
                (let ((Y (make-typed-array (quote type) *unspecified*
                                           (dim A (if (tr? transA) 1 0)))))
                  (name! alpha A transA X conjX 0. Y)
-                 Y))
-             (export blis-name name! name)))))))
+                 Y))))))))
 
 ;; void bli_?gemv( trans_t transa,
 ;;                 conj_t  conjx,
@@ -400,8 +390,7 @@ See also: sdotv ddotv cdotv vdotv"
                (let ((A (make-typed-array (quote type) *unspecified*
                                           (array-length X) (array-length Y))))
                  (name! alpha X conjX Y conjY A)
-                 A))
-             (export blis-name name! name)))))))
+                 A))))))))
 
 ;; void bli_?ger( conj_t  conjx,
 ;;                conj_t  conjy,

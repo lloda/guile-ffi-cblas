@@ -1,6 +1,6 @@
 
 ; Common functions for CBLAS & BLIS bindings.
-; (c) Daniel Llorens - 2014-2015, 2017
+; (c) Daniel Llorens - 2014-2015, 2017, 2019
 
 ; This library is free software; you can redistribute it and/or modify it under
 ; the terms of the GNU General Public License as published by the Free
@@ -10,7 +10,8 @@
 (define-module (ffi arrays)
   #:export (srfi4-type-size
             check-array check-2-arrays
-            stride dim))
+            stride dim
+            syntax->list))
 
 (import (system foreign) (srfi srfi-1) (srfi srfi-11))
 
@@ -38,3 +39,10 @@
     ((f64 c32) 8)
     ((c64) 16)
     (else (throw 'bad-array-type srfi4-type))))
+
+; https://www.scheme.com/csug8/syntax.html §11.3
+(define syntax->list
+  (lambda (ls)
+    (syntax-case ls ()
+      (() '())
+      ((x . r) (cons #'x (syntax->list #'r))))))
