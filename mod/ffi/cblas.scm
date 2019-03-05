@@ -219,6 +219,7 @@ LEVEL 3
 ; -----------------------------
 
 ; TODO pointer-to-this-value support in the ffi, for old C decls that take double * for complex.
+; int cblas_srotg ( FIXME )
 (define-syntax define-rotg
   (lambda (x)
     (syntax-case x ()
@@ -243,7 +244,6 @@ LEVEL 3
                              (pointer-to-first s))
                  (values (array-ref c) (array-ref s))))))))))
 
-; int cblas_isamax (const int N, const float *X, const int incX)
 (define-rotg srotg cblas_srotg 'f32 'f32)
 (define-rotg drotg cblas_drotg 'f64 'f64)
 (define-rotg crotg cblas_crotg 'c32 'f32)
@@ -255,6 +255,8 @@ LEVEL 3
 
 ; -----------------------------
 ; sum_i(a_i * b_i): sdot ddot cdotu cdotc zdotu zdotc
+; float cblas_sdot (const int N, const float *X, const int incX, const float *Y, const int incY)
+; void cblas_cdotu_sub (const int N, const void *X, const int incX, const void *Y, const int incY, void *dotu)
 ; -----------------------------
 
 (define-syntax define-dot-real
@@ -273,7 +275,6 @@ LEVEL 3
                            (pointer-to-first A) (stride A 0)
                            (pointer-to-first B) (stride B 0)))))))))
 
-; float cblas_sdot (const int N, const float *X, const int incX, const float *Y, const int incY)
 (define-dot-real sdot cblas_sdot 'f32)
 (define-dot-real ddot cblas_ddot 'f64)
 
@@ -299,7 +300,6 @@ LEVEL 3
                              (pointer-to-first C))
                  (array-ref C)))))))))
 
-; void cblas_cdotu_sub (const int N, const void *X, const int incX, const void *Y, const int incY, void *dotu)
 (define-dot-complex cdotu cblas_cdotu_sub 'c32)
 (define-dot-complex cdotc cblas_cdotc_sub 'c32)
 (define-dot-complex zdotu cblas_zdotu_sub 'c64)
@@ -311,6 +311,7 @@ LEVEL 3
 
 ; -----------------------------
 ; x -> y: scopy dcopy ccopy zcopy
+; void cblas_scopy (const int N, const float *X, const int incX, float *Y, const int incY)
 ; -----------------------------
 
 ; TODO pointer-to-this-value support in the ffi, for old C decls that take double * for complex.
@@ -331,12 +332,12 @@ LEVEL 3
                            (pointer-to-first X) (stride X 0)
                            (pointer-to-first Y) (stride Y 0)))))))))
 
-; void cblas_scopy (const int N, const float *X, const int incX, float *Y, const int incY)
 (define-sdcz define-copy ?copy! cblas_?copy)
 
 
 ; -----------------------------
 ; x -> y: sswap dswap cswap zswap
+; void cblas_sswap (const int N, const float *X, const int incX, float *Y, const int incY)
 ; -----------------------------
 
 ; TODO pointer-to-this-value support in the ffi, for old C decls that take double * for complex.
@@ -357,12 +358,12 @@ LEVEL 3
                            (pointer-to-first X) (stride X 0)
                            (pointer-to-first Y) (stride Y 0)))))))))
 
-; void cblas_sswap (const int N, const float *X, const int incX, float *Y, const int incY)
 (define-sdcz define-swap ?swap! cblas_?swap)
 
 
 ; -----------------------------
 ; a*x + y -> y: saxpy daxpy caxpy zaxpy
+; void cblas_saxpy (const int N, const float alpha, const float *X, const int incX, float *Y, const int incY)
 ; -----------------------------
 
 ; TODO pointer-to-this-value support in the ffi, for old C decls that take double * for complex.
@@ -383,12 +384,12 @@ LEVEL 3
                            (pointer-to-first X) (stride X 0)
                            (pointer-to-first Y) (stride Y 0)))))))))
 
-; void cblas_saxpy (const int N, const float alpha, const float *X, const int incX, float *Y, const int incY)
 (define-sdcz define-axpy ?axpy! cblas_?axpy)
 
 
 ; -----------------------------
 ; alpha * X_i -> X_i: sscal cscal dscal zscal csscal zdscal
+; void cblas_sscal (const int N, const float alpha, const float *X, const int incX)
 ; -----------------------------
 
 (define-syntax define-scal
@@ -406,7 +407,6 @@ LEVEL 3
                (cblas-name (array-length X) (scalar->arg scalar-srfi4-type alpha)
                            (pointer-to-first X) (stride X 0)))))))))
 
-; void cblas_sscal (const int N, const float alpha, const float *X, const int incX)
 (define-scal sscal! cblas_sscal 'f32 'f32)
 (define-scal dscal! cblas_dscal 'f64 'f64)
 (define-scal cscal! cblas_cscal 'c32 'c32)
@@ -421,9 +421,11 @@ LEVEL 3
 ; -----------------------------
 ; sqrt(sum_i(conj(X_i)*X_i)): snrm2 dnrm2 cnrm2 znrm2
 ; sum('absolute value'(X_i))): sasum dasum casum zasum
+; float cblas_snrm2 (const int N, const float *X, const int incX)
+; -----------------------------
+
 ; 'absolute value' is |Re|+|Im| in the complex case; cf LawsonEtAl1979,
 ; 'Basic linear algebra subprograms for Fortran usage, p. 311.
-; -----------------------------
 
 (define-syntax define-nrm2/asum
   (lambda (x)
@@ -439,7 +441,6 @@ LEVEL 3
                (check-array X 1 srfi4-type)
                (cblas-name (array-length X) (pointer-to-first X) (stride X 0)))))))))
 
-; float cblas_snrm2 (const int N, const float *X, const int incX)
 (define-nrm2/asum snrm2 cblas_snrm2 'f32)
 (define-nrm2/asum dnrm2 cblas_dnrm2 'f64)
 (define-nrm2/asum cnrm2 cblas_scnrm2 'c32)
@@ -460,9 +461,11 @@ LEVEL 3
 
 ; -----------------------------
 ; i | max_j('absolute value'(X_j)) = X_i: isamax idamax icamax izamax
+; int cblas_isamax (const int N, const float *X, const int incX)
+; -----------------------------
+
 ; 'absolute value' is |Re|+|Im| in the complex case; cf LawsonEtAl1979,
 ; 'Basic linear algebra subprograms for Fortran usage, p. 311.
-; -----------------------------
 
 (define-syntax define-iamax
   (lambda (x)
@@ -479,12 +482,13 @@ LEVEL 3
                (check-array X 1 type)
                (cblas-name (array-length X) (pointer-to-first X) (stride X 0)))))))))
 
-; int cblas_isamax (const int N, const float *X, const int incX)
 (define-sdcz define-iamax i?amax cblas_i?amax)
 
 
 ; -----------------------------
 ; alpha*x_i*(maybe conj)(y_j) + A_{i, j} -> A_{i, j}: sger dger cgeru cgerc zgeru cgerc
+; void cblas_sger (const enum CBLAS_ORDER Order, const int M, const int N, const float alpha, const float *X,
+;                  const int incX, const float *Y, const int incY, float *A, const int lda)
 ; -----------------------------
 
 (define (check-arrays-AXY A X Y type)
@@ -515,8 +519,6 @@ LEVEL 3
                              (pointer-to-first Y) (stride Y 0)
                              (pointer-to-first A) A-lead)))))))))
 
-; void cblas_sger (const enum CBLAS_ORDER Order, const int M, const int N, const float alpha, const float *X,
-;                  const int incX, const float *Y, const int incY, float *A, const int lda)
 (define-ger sger! cblas_sger 'f32)
 (define-ger dger! cblas_dger 'f64)
 (define-ger cgeru! cblas_cgeru 'c32)
@@ -530,6 +532,9 @@ LEVEL 3
 
 ; -----------------------------
 ; alpha*sum_j(A_{ij} * X_j) + beta*Y_i -> Y_i: sgemv dgemv cgemv zgemv
+; void cblas_sgemv (const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE TransA,
+;                   const int M, const int N, const float alpha, const float *A, const int lda,
+;                   const float *X, const int incX, const float beta, float *Y, const int incY)
 ; -----------------------------
 
 (define (lead-and-order A)
@@ -564,14 +569,16 @@ LEVEL 3
                                (pointer-to-first X) (stride X 0) (scalar->arg type beta)
                                (pointer-to-first Y) (stride Y 0)))))))))))
 
-; void cblas_sgemv (const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE TransA,
-;                   const int M, const int N, const float alpha, const float *A, const int lda,
-;                   const float *X, const int incX, const float beta, float *Y, const int incY)
 (define-sdcz define-gemv ?gemv! cblas_?gemv)
 
 
 ; -----------------------------
 ; alpha * sum_k(A_{ik}*B_{kj}) + beta * C_{ij} -> C_{ij}: sgemm dgemm cgemm zgemm
+; void cblas_sgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE TransA,
+;                  const enum CBLAS_TRANSPOSE TransB, const int M, const int N,
+;                  const int K, const float alpha, const float *A,
+;                  const int lda, const float *B, const int ldb,
+;                  const float beta, float *C, const int ldc)
 ; -----------------------------
 
 (define-syntax define-gemm
@@ -609,9 +616,4 @@ LEVEL 3
                                  (scalar->arg type beta)
                                  (pointer-to-first C) C-lead)))))))))))
 
-; void cblas_sgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE TransA,
-;                  const enum CBLAS_TRANSPOSE TransB, const int M, const int N,
-;                  const int K, const float alpha, const float *A,
-;                  const int lda, const float *B, const int ldb,
-;                  const float beta, float *C, const int ldc)
 (define-sdcz define-gemm ?gemm! cblas_?gemm)
