@@ -18,10 +18,15 @@
                                    lname))))
 (dynamic-call "bli_init" libblis)
 
-(define dim_t int64)
-(define inc_t int64)
+(define gint_t int64)
+(define dim_t gint_t)
+(define inc_t gint_t)
+(define doff_t gint_t)
 (define trans_t int)
 (define conj_t int)
+(define rank0_t '*)
+(define rank1_t '*)
+(define rank2_t '*)
 
 
 ; -----------------------------
@@ -41,6 +46,7 @@
 ; -----------------------------
 
 ; https://github.com/flame/blis/blob/master/docs/BLISTypedAPI.md
+; https://github.com/flame/blis/blob/master/frame/include/bli_type_defs.h
 
 (define BLIS_NO_TRANSPOSE 0)
 (define BLIS_TRANSPOSE 8)
@@ -49,6 +55,17 @@
 
 (define BLIS_NO_CONJUGATE 0)
 (define BLIS_CONJUGATE (ash 1 4))
+
+(define BLIS_NONUNIT_DIAG 0)
+(define BLIS_UNIT_DIAG (ash 1 8))
+
+(define BLIS_ZEROS 0)
+(define BLIS_LOWER (logior (ash 1 7) (ash 1 6)))
+(define BLIS_UPPER (logior (ash 1 5) (ash 1 6)))
+(define BLIS_DENSE (ash 1 5))
+
+(define BLIS_LEFT 0)
+(define BLIS_RIGHT 1)
 
 (define (fliptr t)
   (cond
@@ -67,7 +84,10 @@
    (else (throw 'bad-transpose-2 t))))
 
 (export BLIS_NO_TRANSPOSE BLIS_TRANSPOSE BLIS_CONJ_NO_TRANSPOSE BLIS_CONJ_TRANSPOSE tr? fliptr
-        BLIS_NO_CONJUGATE BLIS_CONJUGATE)
+        BLIS_NO_CONJUGATE BLIS_CONJUGATE
+        BLIS_NONUNIT_DIAG BLIS_UNIT_DIAG
+        BLIS_ZEROS BLIS_LOWER BLIS_UPPER BLIS_DENSE
+        BLIS_LEFT BLIS_RIGHT)
 
 
 ; -----------------------------
@@ -92,20 +112,16 @@ void bli_?axpbyv
   (lambda (x)
     (syntax-case x ()
       ((_ type blis-name name!)
-       (with-syntax
-           ((blis-name-string (symbol->string (syntax->datum #'blis-name)))
-            (docstring (format #f "(~a conjx [conj_t] alpha [~a] x [#~a(…)] beta [~a] y [#~a(…)])\n\n~a\n"
-                               (symbol->string (syntax->datum #'name!))
-                               (syntax->datum #'type) (syntax->datum #'type)
-                               (syntax->datum #'type) (syntax->datum #'type)
-                               "y := beta * y + alpha * conjx(x)"))
-            (type #'(quote type)))
-         #'(begin
+       (with-syntax ((type #'(quote type)))
+         #`(begin
              (define blis-name (pointer->procedure
-                                void (dynamic-func blis-name-string libblis)
-                                (list conj_t dim_t '* '* inc_t '* '* inc_t)))
+                                void (dynamic-func #,(symbol->string (syntax->datum #'blis-name)) libblis)
+                                (list conj_t dim_t rank0_t rank1_t inc_t rank0_t rank1_t inc_t)))
              (define (name! conjX alpha X beta Y)
-               docstring
+               #,(let ((t (syntax->datum #'type_)))
+                   (format #f "(~a conjx [conj_t] alpha [~a] x [#~a(…)] beta [~a] y [#~a(…)])\n\n~a\n"
+                           (symbol->string (syntax->datum #'name!)) t t t t
+                           "y := beta * y + alpha * conjx(x)"))
                (check-2-arrays X Y 1 type)
                (blis-name conjX (array-length X)
                           (scalar->arg type alpha)
@@ -145,26 +161,22 @@ void bli_?axpyv
 (define-syntax define-axpyv
   (lambda (x)
     (syntax-case x ()
-      ((_ type blis-name name!)
-       (with-syntax
-           ((blis-name-string (symbol->string (syntax->datum #'blis-name)))
-            (docstring (format #f "(~a conjx [conj_t] alpha [~a] x [#~a(…)] y [#~a(…)])\n\n~a\n"
-                               (symbol->string (syntax->datum #'name!))
-                               (syntax->datum #'type) (syntax->datum #'type)
-                               (syntax->datum #'type)
-                               "y := y + alpha * conjx(x)"))
-            (type #'(quote type)))
-         #'(begin
+      ((_ type_ blis-name name!)
+       (with-syntax ((type #'(quote type_)))
+         #`(begin
              (define blis-name (pointer->procedure
-                                void (dynamic-func blis-name-string libblis)
-                                (list conj_t dim_t '* '* inc_t '* inc_t)))
+                                void (dynamic-func (symbol->string (syntax->datum #'blis-name)) libblis)
+                                (list conj_t dim_t rank0_t rank1_t inc_t rank1_t inc_t)))
              (define (name! conjX alpha X Y)
-               docstring
+               #,(let ((t (syntax->datum #'type_)))
+                   (format #f "(~a conjx [conj_t] alpha [~a] X [#~a(…)] Y [#~a(…)])\n\n~a\n"
+                           (symbol->string (syntax->datum #'name!)) t t t
+                           "y := y + alpha * conjx(x)"))
                (check-2-arrays X Y 1 type)
                (blis-name conjX (array-length X)
-                            (scalar->arg type alpha)
-                            (pointer-to-first X) (stride X 0)
-                            (pointer-to-first Y) (stride Y 0)))))))))
+                          (scalar->arg type alpha)
+                          (pointer-to-first X) (stride X 0)
+                          (pointer-to-first Y) (stride Y 0)))))))))
 
 (define-sdcz define-axpyv bli_?axpyv ?axpyv!)
 
@@ -199,21 +211,17 @@ void bli_?dotv
 (define-syntax define-dotv
   (lambda (x)
     (syntax-case x ()
-      ((_ type blis-name name)
-       (with-syntax
-           ((blis-name-string (symbol->string (syntax->datum #'blis-name)))
-            (docstring (format #f "(~a conjx [conj_t] conjy [conj_t] x [#~a(…)] y [#~a(…)])\n\t-> rho [~a]\n\n~a\n"
-                               (symbol->string (syntax->datum #'name))
-                               (syntax->datum #'type) (syntax->datum #'type)
-                               (syntax->datum #'type)
-                               "rho := conjx(x)^T * conjy(y)"))
-            (type #'(quote type)))
-         #'(begin
+      ((_ type_ blis-name name)
+       (with-syntax ((type #'(quote type_)))
+         #`(begin
              (define blis-name (pointer->procedure
-                                void (dynamic-func blis-name-string libblis)
-                                (list conj_t conj_t dim_t '* inc_t '* inc_t '*)))
+                                void (dynamic-func #,(symbol->string (syntax->datum #'blis-name)) libblis)
+                                (list conj_t conj_t dim_t rank1_t inc_t rank1_t inc_t rank0_t)))
              (define (name conjX conjY X Y)
-               docstring
+               #,(let ((t (syntax->datum #'type_)))
+                   (format #f "(~a conjx [conj_t] conjy [conj_t] x [#~a(…)] y [#~a(…)])\n\t-> rho [~a]\n\n~a\n"
+                           (symbol->string (syntax->datum #'name)) t t t
+                           "rho := conjx(x)^T * conjy(y)"))
                (check-2-arrays X Y 1 type)
                (let ((rho (make-typed-array type 0)))
                  (blis-name conjX conjY (array-length X)
@@ -258,15 +266,14 @@ See also: sdotv ddotv cdotv vdotv"
   (lambda (x)
     (syntax-case x ()
       ((_ type blis-name name! name)
-       (with-syntax
-           ((blis-name-string (symbol->string (syntax->datum #'blis-name)))
-            (type #'(quote type)))
-         #'(begin
+       (with-syntax ((type #'(quote type)))
+         #`(begin
              (define blis-name (pointer->procedure
-                                void (dynamic-func blis-name-string libblis)
+                                void (dynamic-func #,(symbol->string (syntax->datum #'blis-name)) libblis)
                                 (list trans_t trans_t dim_t dim_t dim_t
-                                      '* '* inc_t inc_t '* inc_t inc_t
-                                      '* '* inc_t inc_t)))
+                                      rank0_t rank2_t inc_t inc_t
+                                      rank2_t inc_t inc_t
+                                      rank0_t rank2_t inc_t inc_t)))
              (define (name! transA transB alpha A B beta C)
                (check-array A 2 type)
                (check-array B 2 type)
@@ -311,14 +318,14 @@ See also: sdotv ddotv cdotv vdotv"
   (lambda (x)
     (syntax-case x ()
       ((_ type blis-name name! name)
-       (with-syntax
-           ((blis-name-string (symbol->string (syntax->datum #'blis-name)))
-            (type #'(quote type)))
-         #'(begin
+       (with-syntax ((type #'(quote type)))
+         #`(begin
              (define blis-name (pointer->procedure
-                                void (dynamic-func blis-name-string libblis)
-                                (list trans_t conj_t dim_t dim_t '* '* inc_t inc_t
-                                      '* inc_t '* '* inc_t)))
+                                void (dynamic-func #,(symbol->string (syntax->datum #'blis-name)) libblis)
+                                (list trans_t conj_t dim_t dim_t
+                                      rank0_t rank2_t inc_t inc_t
+                                      rank1_t inc_t
+                                      rank0_t rank1_t inc_t)))
              (define (name! transA conjX alpha A X beta Y)
                (check-array A 2 type)
                (check-array X 1 type)
@@ -359,14 +366,13 @@ See also: sdotv ddotv cdotv vdotv"
   (lambda (x)
     (syntax-case x ()
       ((_ type blis-name name! name)
-       (with-syntax
-           ((blis-name-string (symbol->string (syntax->datum #'blis-name)))
-            (type #'(quote type)))
-         #'(begin
+       (with-syntax ((type #'(quote type)))
+         #`(begin
              (define blis-name (pointer->procedure
-                                void (dynamic-func blis-name-string libblis)
-                                (list conj_t conj_t dim_t dim_t '* '* inc_t '* inc_t
-                                      '* inc_t inc_t)))
+                                void (dynamic-func #,(symbol->string (syntax->datum #'blis-name)) libblis)
+                                (list conj_t conj_t dim_t dim_t
+                                      rank0_t rank1_t inc_t rank1_t inc_t
+                                      rank2_t inc_t inc_t)))
              (define (name! conjX conjY alpha X Y A)
                (check-array A 2 type)
                (check-array X 1 type)
