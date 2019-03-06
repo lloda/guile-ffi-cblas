@@ -186,10 +186,10 @@
 ; ?gemv
 ; ---------------------------------
 
-(define (test-gemv tag gemv! alpha A transA X conjX beta Y)
+(define (test-gemv tag gemv! transA conjX alpha A X beta Y)
 
   ;; alpha*sum_j(A_{ij} * X_j) + beta*Y_i -> Y_i
-  (define (ref-gemv! alpha A transA X conjX beta Y)
+  (define (ref-gemv! transA conjX alpha A X beta Y)
     (let* ((A (apply-transpose-flag A transA))
            (X (apply-transpose-flag X conjX)))
       (match (array-dimensions A)
@@ -204,8 +204,8 @@
         (Y2 (array-copy Y))
         (AA (array-copy A))
         (XX (array-copy X)))
-    (gemv! alpha A transA X conjX beta Y1)
-    (ref-gemv! alpha A transA X conjX beta Y2)
+    (gemv! transA conjX alpha A X beta Y1)
+    (ref-gemv! transA conjX alpha A X beta Y2)
     ;; (test-approximate-array tag Y1 Y2 1e-15) ; TODO as a single test.
     (test-begin tag)
     (test-equal Y1 Y2)
@@ -220,9 +220,8 @@
                       (test-gemv (format #f "gemv:~a:~a:~a:~a:~a:~a" type (procedure-name make-A)
                                          (procedure-name make-X) (procedure-name make-Y)
                                          transA conjX)
-                                 gemv! 3. (fill-A2! (make-A type)) transA
-                                 (fill-A1! (make-X type)) conjX
-                                 2. (fill-A1! (make-Y type)))))
+                                 gemv! transA conjX 3. (fill-A2! (make-A type))
+                                 (fill-A1! (make-X type)) 2. (fill-A1! (make-Y type)))))
        (apply list-product
          (list (list make-M-c-order make-M-fortran-order make-M-offset
                      make-M-strided make-M-strided-both make-M-strided-reversed)

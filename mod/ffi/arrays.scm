@@ -62,7 +62,7 @@
              (append-map
               (lambda (tag t)
                 (let ((fun (map (cut subst-qmark <> t) (syntax->list #'(n ...)))))
-; #`(quote #,(datum->syntax x tag)) to pass a symbol, but assembling docstrings seems harder (?)
+; #`(quote #,(datum->syntax x tag)) to write out a symbol, but assembling docstrings seems harder (?)
                   (list (cons* #'definer (datum->syntax x tag) fun)
                         (cons* #'export fun))))
               '(f32 f64 c32 c64)

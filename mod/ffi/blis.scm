@@ -243,6 +243,17 @@ See also: sdotv ddotv cdotv vdotv"
 ; gemm: alpha * sum_k(A_{ik}*B_{kj}) + beta * C_{ij} -> C_{ij}
 ; -----------------------------
 
+;; void bli_?gemm( trans_t transa,
+;;                 trans_t transb,
+;;                 dim_t   m,
+;;                 dim_t   n,
+;;                 dim_t   k,
+;;                 ctype*  alpha,
+;;                 ctype*  a, inc_t rsa, inc_t csa,
+;;                 ctype*  b, inc_t rsb, inc_t csb,
+;;                 ctype*  beta,
+;;                 ctype*  c, inc_t rsc, inc_t csc )
+
 (define-syntax define-gemm
   (lambda (x)
     (syntax-case x ()
@@ -279,23 +290,22 @@ See also: sdotv ddotv cdotv vdotv"
                  (name! alpha A transA B transB 0. C)
                  C))))))))
 
-;; void bli_?gemm( trans_t transa,
-;;                 trans_t transb,
-;;                 dim_t   m,
-;;                 dim_t   n,
-;;                 dim_t   k,
-;;                 ctype*  alpha,
-;;                 ctype*  a, inc_t rsa, inc_t csa,
-;;                 ctype*  b, inc_t rsb, inc_t csb,
-;;                 ctype*  beta,
-;;                 ctype*  c, inc_t rsc, inc_t csc )
-
 (define-sdcz define-gemm bli_?gemm ?gemm! ?gemm)
 
 
 ; -----------------------------
 ; gemv: alpha*sum_j(A_{ij} * X_j) + beta*Y_i -> Y_i
 ; -----------------------------
+
+;; void bli_?gemv( trans_t transa,
+;;                 conj_t  conjx,
+;;                 dim_t   m,
+;;                 dim_t   n,
+;;                 ctype*  alpha,
+;;                 ctype*  a, inc_t rsa, inc_t csa,
+;;                 ctype*  x, inc_t incx,
+;;                 ctype*  beta,
+;;                 ctype*  y, inc_t incy );
 
 (define-syntax define-gemv
   (lambda (x)
@@ -309,7 +319,7 @@ See also: sdotv ddotv cdotv vdotv"
                                 void (dynamic-func blis-name-string libblis)
                                 (list trans_t conj_t dim_t dim_t '* '* inc_t inc_t
                                       '* inc_t '* '* inc_t)))
-             (define (name! alpha A transA X conjX beta Y)
+             (define (name! transA conjX alpha A X beta Y)
                (check-array A 2 type)
                (check-array X 1 type)
                (check-array Y 1 type)
@@ -323,21 +333,11 @@ See also: sdotv ddotv cdotv vdotv"
                             (pointer-to-first X) (stride X 0)
                             (scalar->arg type beta)
                             (pointer-to-first Y) (stride Y 0))))
-             (define (name alpha A transA X conjX)
+             (define (name transA conjX alpha A X)
                (let ((Y (make-typed-array type *unspecified*
                                           (dim A (if (tr? transA) 1 0)))))
-                 (name! alpha A transA X conjX 0. Y)
+                 (name! transA conjX alpha A X 0 Y)
                  Y))))))))
-
-;; void bli_?gemv( trans_t transa,
-;;                 conj_t  conjx,
-;;                 dim_t   m,
-;;                 dim_t   n,
-;;                 ctype*  alpha,
-;;                 ctype*  a, inc_t rsa, inc_t csa,
-;;                 ctype*  x, inc_t incx,
-;;                 ctype*  beta,
-;;                 ctype*  y, inc_t incy );
 
 (define-sdcz define-gemv bli_?gemv ?gemv! ?gemv)
 
@@ -345,6 +345,15 @@ See also: sdotv ddotv cdotv vdotv"
 ; -----------------------------
 ; ger: alpha*x_i*y_j + A_{i, j} -> A_{i, j}
 ; -----------------------------
+
+;; void bli_?ger( conj_t  conjx,
+;;                conj_t  conjy,
+;;                dim_t   m,
+;;                dim_t   n,
+;;                ctype*  alpha,
+;;                ctype*  x, inc_t incx,
+;;                ctype*  y, inc_t incy,
+;;                ctype*  a, inc_t rsa, inc_t csa );
 
 (define-syntax define-ger
   (lambda (x)
@@ -372,18 +381,9 @@ See also: sdotv ddotv cdotv vdotv"
                             (pointer-to-first Y) (stride Y 0)
                             (pointer-to-first A) (stride A 0) (stride A 1))))
              (define (name alpha X conjX Y conjY)
-               (let ((A (make-typed-array type *unspecified*
+               (let ((A (make-typed-array type 0
                                           (array-length X) (array-length Y))))
                  (name! alpha X conjX Y conjY A)
                  A))))))))
-
-;; void bli_?ger( conj_t  conjx,
-;;                conj_t  conjy,
-;;                dim_t   m,
-;;                dim_t   n,
-;;                ctype*  alpha,
-;;                ctype*  x, inc_t incx,
-;;                ctype*  y, inc_t incy,
-;;                ctype*  a, inc_t rsa, inc_t csa );
 
 (define-sdcz define-ger bli_?ger ?ger! ?ger)
