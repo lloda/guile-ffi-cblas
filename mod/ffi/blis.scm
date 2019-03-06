@@ -367,7 +367,7 @@ See also: sdotv ddotv cdotv vdotv"
                                 void (dynamic-func blis-name-string libblis)
                                 (list conj_t conj_t dim_t dim_t '* '* inc_t '* inc_t
                                       '* inc_t inc_t)))
-             (define (name! alpha X conjX Y conjY A)
+             (define (name! conjX conjY alpha X Y A)
                (check-array A 2 type)
                (check-array X 1 type)
                (check-array Y 1 type)
@@ -380,10 +380,10 @@ See also: sdotv ddotv cdotv vdotv"
                             (pointer-to-first X) (stride X 0)
                             (pointer-to-first Y) (stride Y 0)
                             (pointer-to-first A) (stride A 0) (stride A 1))))
-             (define (name alpha X conjX Y conjY)
+             (define (name conjX conjY alpha X Y)
                (let ((A (make-typed-array type 0
                                           (array-length X) (array-length Y))))
-                 (name! alpha X conjX Y conjY A)
+                 (name! conjX conjY alpha X Y A)
                  A))))))))
 
 (define-sdcz define-ger bli_?ger ?ger! ?ger)

@@ -239,10 +239,10 @@
 ; ?ger
 ; ---------------------------------
 
-(define (test-ger tag ger! alpha X conjX Y conjY A)
+(define (test-ger tag ger! conjX conjY alpha X Y A)
 
   ;; alpha*x_i*y_j + A_{i, j} -> A_{i, j}
-  (define (ref-ger! alpha X conjX Y conjY A)
+  (define (ref-ger! conjX conjY alpha X Y A)
     (let* ((X (apply-transpose-flag X conjX))
            (Y (apply-transpose-flag Y conjY))
            (M (array-length X))
@@ -256,8 +256,8 @@
 
   (let ((A1 (array-copy A))
         (A2 (array-copy A)))
-    (ger! alpha X conjX Y conjY A1)
-    (ref-ger! alpha X conjX Y conjY A2)
+    (ger! conjX conjY alpha X Y A1)
+    (ref-ger! conjX conjY alpha X Y A2)
     ;; (test-approximate-array tag A1 A2 1e-15) ; TODO as a single test.
     (test-begin tag)
     (test-equal A1 A2)
@@ -272,8 +272,9 @@
                           (test-ger (format #f "ger:~a:~a:~a:~a:~a:~a" type (procedure-name make-X)
                                             (procedure-name make-Y) (procedure-name make-A)
                                             conjX conjY)
-                                    ger! 3. (fill-A1! (make-X type)) conjX
-                                    (fill-A1! (make-Y type)) conjY
+                                    ger! conjX conjY 3.
+                                    (fill-A1! (make-X type))
+                                    (fill-A1! (make-Y type))
                                     (fill-A2! (make-A type)))))
          (list-product
           (list make-v-compact make-v-strided make-v-offset make-v-strided-reversed)
