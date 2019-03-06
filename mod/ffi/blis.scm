@@ -267,7 +267,7 @@ See also: sdotv ddotv cdotv vdotv"
                                 (list trans_t trans_t dim_t dim_t dim_t
                                       '* '* inc_t inc_t '* inc_t inc_t
                                       '* '* inc_t inc_t)))
-             (define (name! alpha A transA B transB beta C)
+             (define (name! transA transB alpha A B beta C)
                (check-array A 2 type)
                (check-array B 2 type)
                (check-array C 2 type)
@@ -283,11 +283,11 @@ See also: sdotv ddotv cdotv vdotv"
                             (pointer-to-first B) (stride B 0) (stride B 1)
                             (scalar->arg type beta)
                             (pointer-to-first C) (stride C 0) (stride C 1))))
-             (define (name alpha A transA B transB)
+             (define (name transA transB alpha A B)
                (let ((C (make-typed-array type *unspecified*
                                           (dim A (if (tr? transA) 1 0))
                                           (dim B (if (tr? transB) 0 1)))))
-                 (name! alpha A transA B transB 0. C)
+                 (name! transA transB alpha A B 0. C)
                  C))))))))
 
 (define-sdcz define-gemm bli_?gemm ?gemm! ?gemm)

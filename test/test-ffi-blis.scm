@@ -122,10 +122,10 @@
 ; sgemm dgemm cgemm zgemm
 ; ---------------------------------
 
-(define (test-gemm tag gemm! alpha A transA B transB beta C)
+(define (test-gemm tag gemm! transA transB alpha A B beta C)
 
   ;; alpha * sum_k(A_{ik}*B_{kj}) + beta * C_{ij} -> C_{ij}
-  (define (ref-gemm! alpha A transA B transB beta C)
+  (define (ref-gemm! transA transB alpha A B beta C)
     (let* ((A (apply-transpose-flag A transA))
            (B (apply-transpose-flag B transB))
            (M (first (array-dimensions C)))
@@ -141,8 +141,8 @@
         (C2 (array-copy C))
         (AA (array-copy A))
         (BB (array-copy B)))
-    (gemm! alpha A transA B transB beta C1)
-    (ref-gemm! alpha A transA B transB beta C2)
+    (gemm! transA transB alpha A B beta C1)
+    (ref-gemm! transA transB alpha A B beta C2)
     ;; (test-approximate-array tag C1 C2 1e-15) ; TODO as a single test.
     (test-begin tag)
     (test-equal C1 C2)
@@ -155,23 +155,22 @@
       (let ((A (fill-A2! (make-typed-array type *unspecified* 4 3)))
             (B (fill-A2! (make-typed-array type *unspecified* 3 5)))
             (C (fill-A2! (make-typed-array type *unspecified* 4 5))))
-        (test-gemm "gemm-1" gemm! 1. A BLIS_NO_TRANSPOSE B BLIS_NO_TRANSPOSE 1. C)
-        (test-gemm "gemm-2" gemm! 1. A BLIS_TRANSPOSE C BLIS_NO_TRANSPOSE 1. B)
-        (test-gemm "gemm-3" gemm! 1. C BLIS_NO_TRANSPOSE B BLIS_TRANSPOSE 1. A))
+        (test-gemm "gemm-1" gemm! BLIS_NO_TRANSPOSE BLIS_NO_TRANSPOSE 1. A B 1. C)
+        (test-gemm "gemm-2" gemm! BLIS_TRANSPOSE BLIS_NO_TRANSPOSE 1. A C 1. B)
+        (test-gemm "gemm-3" gemm! BLIS_NO_TRANSPOSE BLIS_TRANSPOSE 1. C B 1. A))
       (let ((A (fill-A2! (transpose-array (make-typed-array 'f64 *unspecified* 4 3) 1 0)))
             (B (fill-A2! (transpose-array (make-typed-array 'f64 *unspecified* 3 5) 1 0)))
             (C (fill-A2! (transpose-array (make-typed-array 'f64 *unspecified* 4 5) 1 0))))
-        (test-gemm "gemm-4" dgemm! 1. A BLIS_TRANSPOSE B BLIS_TRANSPOSE 1. (transpose-array C 1 0))
-        (test-gemm "gemm-5" dgemm! 1. A BLIS_NO_TRANSPOSE C BLIS_TRANSPOSE 1. (transpose-array B 1 0))
-        (test-gemm "gemm-6" dgemm! 1. C BLIS_TRANSPOSE B BLIS_NO_TRANSPOSE 1. (transpose-array A 1 0)))
+        (test-gemm "gemm-4" dgemm! BLIS_TRANSPOSE BLIS_TRANSPOSE 1. A B 1. (transpose-array C 1 0))
+        (test-gemm "gemm-5" dgemm! BLIS_NO_TRANSPOSE BLIS_TRANSPOSE 1. A C 1. (transpose-array B 1 0))
+        (test-gemm "gemm-6" dgemm! BLIS_TRANSPOSE BLIS_NO_TRANSPOSE 1. C B 1. (transpose-array A 1 0)))
       (for-each
        (match-lambda ((make-A make-B make-C transA transB)
                       (test-gemm (format #f "gemm:~a:~a:~a:~a:~a:~a" type (procedure-name make-A)
                                          (procedure-name make-B) (procedure-name make-C)
                                          transA transB)
-                                 gemm! 3. (fill-A2! (make-A type)) transA
-                                 (fill-A2! (make-B type)) transB
-                                 2. (fill-A2! (make-C type)))))
+                                 gemm! transA transB 3. (fill-A2! (make-A type))
+                                 (fill-A2! (make-B type)) 2. (fill-A2! (make-C type)))))
        (apply list-product
          (append (make-list 3 (list make-M-c-order make-M-fortran-order make-M-offset
                                     make-M-strided make-M-strided-both make-M-strided-reversed))
