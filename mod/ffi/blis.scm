@@ -133,8 +133,6 @@ void bli_?axpbyv
 (define-auto (axpbyv! conjX alpha X beta Y) X ?axpbyv!)
 
 #|
-y := y + alpha * conjx(x)
-
 void bli_?axpyv
      (
        conj_t  conjx,
@@ -155,10 +153,7 @@ void bli_?axpyv
                                 void (dynamic-func (symbol->string (syntax->datum #'blis-name)) libblis)
                                 (list conj_t dim_t rank0_t rank1_t inc_t rank1_t inc_t)))
              (define (name! conjX alpha X Y)
-               #,(let ((t (syntax->datum #'type_)))
-                   (format #f "(~a conjx [conj_t] alpha [~a] X [#~a(…)] Y [#~a(…)])\n\n~a\n"
-                           (symbol->string (syntax->datum #'name!)) t t t
-                           "y := y + alpha * conjx(x)"))
+               "Y := Y + alpha * conjX(X)"
                (check-2-arrays X Y 1 type)
                (blis-name conjX (array-length X)
                           (scalar->arg type alpha)
@@ -169,8 +164,6 @@ void bli_?axpyv
 (define-auto (axpyv! conjX alpha X Y) X ?axpyv!)
 
 #|
-rho := conjx(x)^T * conjy(y)
-
 void bli_?dotv
      (
        conj_t  conjx,
@@ -192,10 +185,7 @@ void bli_?dotv
                                 void (dynamic-func #,(symbol->string (syntax->datum #'blis-name)) libblis)
                                 (list conj_t conj_t dim_t rank1_t inc_t rank1_t inc_t rank0_t)))
              (define (name conjX conjY X Y)
-               #,(let ((t (syntax->datum #'type_)))
-                   (format #f "(~a conjx [conj_t] conjy [conj_t] x [#~a(…)] y [#~a(…)])\n\t-> rho [~a]\n\n~a\n"
-                           (symbol->string (syntax->datum #'name)) t t t
-                           "rho := conjx(x)^T * conjy(y)"))
+               "rho := conjX(X)^T * conjY(Y)"
                (check-2-arrays X Y 1 type)
                (let ((rho (make-typed-array type 0)))
                  (blis-name conjX conjY (array-length X)
@@ -209,19 +199,119 @@ void bli_?dotv
 
 
 ; -----------------------------
-; gemm: alpha * sum_k(A_{ik}*B_{kj}) + beta * C_{ij} -> C_{ij}
+; level-2: *gemv *ger hemv her her2 symv syr syr2 trmv trsv
 ; -----------------------------
 
-;; void bli_?gemm( trans_t transa,
-;;                 trans_t transb,
-;;                 dim_t   m,
-;;                 dim_t   n,
-;;                 dim_t   k,
-;;                 ctype*  alpha,
-;;                 ctype*  a, inc_t rsa, inc_t csa,
-;;                 ctype*  b, inc_t rsb, inc_t csb,
-;;                 ctype*  beta,
-;;                 ctype*  c, inc_t rsc, inc_t csc )
+#|
+void bli_?gemv( trans_t transa,
+                conj_t  conjx,
+                dim_t   m,
+                dim_t   n,
+                ctype*  alpha,
+                ctype*  a, inc_t rsa, inc_t csa,
+                ctype*  x, inc_t incx,
+                ctype*  beta,
+                ctype*  y, inc_t incy );
+|#
+
+(define-syntax define-gemv
+  (lambda (x)
+    (syntax-case x ()
+      ((_ type blis-name name! name)
+       (with-syntax ((type #'(quote type)))
+         #`(begin
+             (define blis-name (pointer->procedure
+                                void (dynamic-func #,(symbol->string (syntax->datum #'blis-name)) libblis)
+                                (list trans_t conj_t dim_t dim_t
+                                      rank0_t rank2_t inc_t inc_t
+                                      rank1_t inc_t
+                                      rank0_t rank1_t inc_t)))
+             (define (name! transA conjX alpha A X beta Y)
+               "Y := beta * Y + alpha * transA(A) * conjX(X)"
+               (check-array A 2 type)
+               (check-array X 1 type)
+               (check-array Y 1 type)
+               (let ((M (array-length Y))
+                     (N (array-length X)))
+                 (unless (= M (dim A (if (tr? transA) 1 0))) (throw 'mismatched-YA))
+                 (unless (= N (dim A (if (tr? transA) 0 1))) (throw 'mismatched-XA))
+                 (blis-name transA conjX M N
+                            (scalar->arg type alpha)
+                            (pointer-to-first A) (stride A 0) (stride A 1)
+                            (pointer-to-first X) (stride X 0)
+                            (scalar->arg type beta)
+                            (pointer-to-first Y) (stride Y 0))))
+             (define (name transA conjX alpha A X)
+               (let ((Y (make-typed-array type *unspecified*
+                                          (dim A (if (tr? transA) 1 0)))))
+                 (name! transA conjX alpha A X 0 Y)
+                 Y))))))))
+
+(define-sdcz gemv bli_?gemv ?gemv! ?gemv)
+(define-auto (gemv! transA conjX alpha A X beta Y) A ?gemv!)
+
+#|
+void bli_?ger( conj_t  conjx,
+               conj_t  conjy,
+               dim_t   m,
+               dim_t   n,
+               ctype*  alpha,
+               ctype*  x, inc_t incx,
+               ctype*  y, inc_t incy,
+               ctype*  a, inc_t rsa, inc_t csa );
+|#
+
+(define-syntax define-ger
+  (lambda (x)
+    (syntax-case x ()
+      ((_ type blis-name name! name)
+       (with-syntax ((type #'(quote type)))
+         #`(begin
+             (define blis-name (pointer->procedure
+                                void (dynamic-func #,(symbol->string (syntax->datum #'blis-name)) libblis)
+                                (list conj_t conj_t dim_t dim_t
+                                      rank0_t rank1_t inc_t rank1_t inc_t
+                                      rank2_t inc_t inc_t)))
+             (define (name! conjX conjY alpha X Y A)
+               "A := A + alpha * conjX(X) * conjY(Y)^T"
+               (check-array A 2 type)
+               (check-array X 1 type)
+               (check-array Y 1 type)
+               (let ((M (array-length X))
+                     (N (array-length Y)))
+                 (unless (= M (dim A 0)) (throw 'mismatched-XA))
+                 (unless (= N (dim A 1)) (throw 'mismatched-YA))
+                 (blis-name conjX conjY (array-length X) (array-length Y)
+                            (scalar->arg type alpha)
+                            (pointer-to-first X) (stride X 0)
+                            (pointer-to-first Y) (stride Y 0)
+                            (pointer-to-first A) (stride A 0) (stride A 1))))
+             (define (name conjX conjY alpha X Y)
+               (let ((A (make-typed-array type 0
+                                          (array-length X) (array-length Y))))
+                 (name! conjX conjY alpha X Y A)
+                 A))))))))
+
+(define-sdcz ger bli_?ger ?ger! ?ger)
+(define-auto (ger! conjX conjY alpha X Y A) X ?ger!)
+
+
+; -----------------------------
+; level-3: *gemm hemm herk her2k symm syrk syr2k trmm trmm3 trsm
+; -----------------------------
+
+#|
+void bli_?gemm( trans_t transa,
+                trans_t transb,
+                dim_t   m,
+                dim_t   n,
+                dim_t   k,
+                ctype*  alpha,
+                ctype*  a, inc_t rsa, inc_t csa,
+                ctype*  b, inc_t rsb, inc_t csb,
+                ctype*  beta,
+                ctype*  c, inc_t rsc, inc_t csc )
+|#
 
 (define-syntax define-gemm
   (lambda (x)
@@ -236,6 +326,7 @@ void bli_?dotv
                                       rank2_t inc_t inc_t
                                       rank0_t rank2_t inc_t inc_t)))
              (define (name! transA transB alpha A B beta C)
+               "C := beta * C + alpha * transA(A) * transB(B)"
                (check-array A 2 type)
                (check-array B 2 type)
                (check-array C 2 type)
@@ -260,100 +351,3 @@ void bli_?dotv
 
 (define-sdcz gemm bli_?gemm ?gemm! ?gemm)
 (define-auto (gemm! transA transB alpha A B beta C) A ?gemm!)
-
-
-; -----------------------------
-; gemv: alpha*sum_j(A_{ij} * X_j) + beta*Y_i -> Y_i
-; -----------------------------
-
-;; void bli_?gemv( trans_t transa,
-;;                 conj_t  conjx,
-;;                 dim_t   m,
-;;                 dim_t   n,
-;;                 ctype*  alpha,
-;;                 ctype*  a, inc_t rsa, inc_t csa,
-;;                 ctype*  x, inc_t incx,
-;;                 ctype*  beta,
-;;                 ctype*  y, inc_t incy );
-
-(define-syntax define-gemv
-  (lambda (x)
-    (syntax-case x ()
-      ((_ type blis-name name! name)
-       (with-syntax ((type #'(quote type)))
-         #`(begin
-             (define blis-name (pointer->procedure
-                                void (dynamic-func #,(symbol->string (syntax->datum #'blis-name)) libblis)
-                                (list trans_t conj_t dim_t dim_t
-                                      rank0_t rank2_t inc_t inc_t
-                                      rank1_t inc_t
-                                      rank0_t rank1_t inc_t)))
-             (define (name! transA conjX alpha A X beta Y)
-               (check-array A 2 type)
-               (check-array X 1 type)
-               (check-array Y 1 type)
-               (let ((M (array-length Y))
-                     (N (array-length X)))
-                 (unless (= M (dim A (if (tr? transA) 1 0))) (throw 'mismatched-YA))
-                 (unless (= N (dim A (if (tr? transA) 0 1))) (throw 'mismatched-XA))
-                 (blis-name transA conjX M N
-                            (scalar->arg type alpha)
-                            (pointer-to-first A) (stride A 0) (stride A 1)
-                            (pointer-to-first X) (stride X 0)
-                            (scalar->arg type beta)
-                            (pointer-to-first Y) (stride Y 0))))
-             (define (name transA conjX alpha A X)
-               (let ((Y (make-typed-array type *unspecified*
-                                          (dim A (if (tr? transA) 1 0)))))
-                 (name! transA conjX alpha A X 0 Y)
-                 Y))))))))
-
-(define-sdcz gemv bli_?gemv ?gemv! ?gemv)
-(define-auto (gemv! transA conjX alpha A X beta Y) A ?gemv!)
-
-
-; -----------------------------
-; ger: alpha*x_i*y_j + A_{i, j} -> A_{i, j}
-; -----------------------------
-
-;; void bli_?ger( conj_t  conjx,
-;;                conj_t  conjy,
-;;                dim_t   m,
-;;                dim_t   n,
-;;                ctype*  alpha,
-;;                ctype*  x, inc_t incx,
-;;                ctype*  y, inc_t incy,
-;;                ctype*  a, inc_t rsa, inc_t csa );
-
-(define-syntax define-ger
-  (lambda (x)
-    (syntax-case x ()
-      ((_ type blis-name name! name)
-       (with-syntax ((type #'(quote type)))
-         #`(begin
-             (define blis-name (pointer->procedure
-                                void (dynamic-func #,(symbol->string (syntax->datum #'blis-name)) libblis)
-                                (list conj_t conj_t dim_t dim_t
-                                      rank0_t rank1_t inc_t rank1_t inc_t
-                                      rank2_t inc_t inc_t)))
-             (define (name! conjX conjY alpha X Y A)
-               (check-array A 2 type)
-               (check-array X 1 type)
-               (check-array Y 1 type)
-               (let ((M (array-length X))
-                     (N (array-length Y)))
-                 (unless (= M (dim A 0)) (throw 'mismatched-XA))
-                 (unless (= N (dim A 1)) (throw 'mismatched-YA))
-                 (blis-name conjX conjY (array-length X) (array-length Y)
-                            (scalar->arg type alpha)
-                            (pointer-to-first X) (stride X 0)
-                            (pointer-to-first Y) (stride Y 0)
-                            (pointer-to-first A) (stride A 0) (stride A 1))))
-             (define (name conjX conjY alpha X Y)
-               (let ((A (make-typed-array type 0
-                                          (array-length X) (array-length Y))))
-                 (name! conjX conjY alpha X Y A)
-                 A))))))))
-
-(define-sdcz ger bli_?ger ?ger! ?ger)
-(define-auto (ger! conjX conjY alpha X Y A) X ?ger!)
