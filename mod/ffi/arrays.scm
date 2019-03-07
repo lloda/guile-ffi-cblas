@@ -12,9 +12,10 @@
             srfi4-type-size
             check-array check-2-arrays
             stride dim
-            define-sdcz))
+            define-sdcz
+            define-auto))
 
-(import (system foreign) (srfi srfi-1) (srfi srfi-11) (srfi srfi-26))
+(import (system foreign) (srfi srfi-1) (srfi srfi-11) (srfi srfi-26) (ice-9 match))
 
 (define (stride A i)
   (list-ref (shared-array-increments A) i))
@@ -52,7 +53,7 @@
   (define (subst-qmark stx-name t)
     (let* ((s (symbol->string (syntax->datum stx-name)))
            (i (string-index s #\?)))
-      (datum->syntax stx-name (string->symbol (string-replace s t i (+ i 1)))))))
+      (datum->syntax stx-name (string->symbol (string-replace s (symbol->string t) i (+ i 1)))))))
 
 (define-syntax define-sdcz
   (lambda (x)
@@ -62,9 +63,22 @@
          (cons #'begin
                (append-map
                 (lambda (tag t)
-                  (let ((fun (map (cut subst-qmark <> (symbol->string t)) (syntax->list #'(n ...)))))
+                  (let ((fun (map (cut subst-qmark <> t) (syntax->list #'(n ...)))))
 ; #`(quote #,(datum->syntax x tag)) to write out a symbol, but assembling docstrings seems harder (?)
                     (list (cons* #'definer (datum->syntax x tag) fun)
                           (cons* #'export fun))))
                 '(f32 f64 c32 c64)
                 '(s d c z))))))))
+
+(define-syntax define-auto
+  (lambda (x)
+    (syntax-case x ()
+      ((_ (fun args ...) X ?fun)
+       #`(begin
+           (define (fun args ...)
+             ((match (array-type X)
+                #,@(map (lambda (tag t) (list #`(quote #,(datum->syntax x tag)) (subst-qmark #'?fun t)))
+                     '(f32 f64 c32 c64)
+                     '(s d c z)))
+              args ...))
+           (export fun))))))

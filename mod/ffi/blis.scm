@@ -130,20 +130,7 @@ void bli_?axpbyv
                           (pointer-to-first Y) (stride Y 0)))))))))
 
 (define-sdcz axpbyv bli_?axpbyv ?axpbyv!)
-
-(define (axpbyv! conjX alpha X beta Y)
-  "
-(axpbyv! conjX [conj_t] alpha [type] X [#type(…)] beta [type] Y [#type(…)])
-
-y := beta * y + alpha * conjx(x)
-
-See also: saxpbyv! daxpbyv! caxpbyv! zaxpbyv! axpyv!"
-
-  ((match (array-type X)
-     (('f32 saxpbyv!) ('f64 daxpbyv!) ('c32 caxpbyv!) ('c64 saxpbyv!)))
-   conjX alpha X beta Y))
-
-(export axpbyv!)
+(define-auto (axpbyv! conjX alpha X beta Y) X ?axpbyv!)
 
 #|
 y := y + alpha * conjx(x)
@@ -179,20 +166,7 @@ void bli_?axpyv
                           (pointer-to-first Y) (stride Y 0)))))))))
 
 (define-sdcz axpyv bli_?axpyv ?axpyv!)
-
-(define (axpyv! conjX alpha X Y)
-  "
-(axpyv! conjX [conj_t] alpha [type] X [#type()] Y [#type()])
-
-y := y + alpha * conjx(x)
-
-See also: saxpyv! daxpyv! caxpyv! zaxpyv! axpbyv!"
-
-  ((match (array-type X)
-     ('f32 saxpyv!) ('f64 daxpyv!) ('c32 caxpyv!) ('c64 zaxpyv!))
-   conjX alpha X Y))
-
-(export axpyv!)
+(define-auto (axpyv! conjX alpha X Y) X ?axpyv!)
 
 #|
 rho := conjx(x)^T * conjy(y)
@@ -231,20 +205,7 @@ void bli_?dotv
                  (array-ref rho)))))))))
 
 (define-sdcz dotv bli_?dotv ?dotv)
-
-(define (dotv conjX conjY X Y)
-  "
-(dotv conjX [conj_t] conjY [conj_t] X [#type(…)] Y [#type(…)]\n\t-> rho [type])
-
-rho := conjx(x)^T * conjy(y)
-
-See also: sdotv ddotv cdotv vdotv"
-
-  ((match (array-type X)
-     ('f32 sdotv) ('f64 ddotv) ('c32 cdotv) ('c64 zdotv))
-   conjX conjY X Y))
-
-(export dotv)
+(define-auto (dotv conjX conjY X Y) X ?dotv)
 
 
 ; -----------------------------
@@ -298,6 +259,7 @@ See also: sdotv ddotv cdotv vdotv"
                  C))))))))
 
 (define-sdcz gemm bli_?gemm ?gemm! ?gemm)
+(define-auto (gemm! transA transB alpha A B beta C) A ?gemm!)
 
 
 ; -----------------------------
@@ -347,6 +309,7 @@ See also: sdotv ddotv cdotv vdotv"
                  Y))))))))
 
 (define-sdcz gemv bli_?gemv ?gemv! ?gemv)
+(define-auto (gemv! transA conjX alpha A X beta Y) A ?gemv!)
 
 
 ; -----------------------------
@@ -393,3 +356,4 @@ See also: sdotv ddotv cdotv vdotv"
                  A))))))))
 
 (define-sdcz ger bli_?ger ?ger! ?ger)
+(define-auto (ger! conjX conjY alpha X Y A) X ?ger!)
