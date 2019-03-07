@@ -29,6 +29,12 @@
     ((c32 c64) '*)
     (else (throw 'no-ffi-type-for-type srfi4-type))))
 
+(define (srfi4-type->real srfi4-type)
+  (case srfi4-type
+    ((f32 c32) 'f32)
+    ((f64 c64) 'f64)
+    (else (throw 'no-real-type-for-type srfi4-type))))
+
 (define (srfi4-type->real-type srfi4-type)
   (case srfi4-type
     ((f32 c32) float)
@@ -223,8 +229,10 @@ LEVEL 3
 (define-syntax define-rotg
   (lambda (x)
     (syntax-case x ()
-      ((_ cblas-name name ctype stype)
+      ((_ type_ cblas-name name)
        (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name)))
+                     (ctype #'(quote type_))
+                     (stype #'(srfi4-type->real (syntax->datum #'type_)))
                      (docstring (string-append (symbol->string (syntax->datum #'cblas-name))
                                                " a b -> (values c s)")))
          #'(begin
@@ -234,23 +242,17 @@ LEVEL 3
                 (list '* '* '* '*)))
              (define (name a b)
                docstring
-               (let ((a (make-typed-array ctype a))
-                     (b (make-typed-array ctype b))
-                     (c (make-typed-array stype *unspecified*))
-                     (s (make-typed-array ctype *unspecified*)))
+               (let* ((a (make-typed-array ctype a))
+                      (b (make-typed-array ctype b))
+                      (c (make-typed-array stype *unspecified*))
+                      (s (make-typed-array ctype *unspecified*)))
                  (cblas-name (pointer-to-first a)
                              (pointer-to-first b)
                              (pointer-to-first c)
                              (pointer-to-first s))
                  (values (array-ref c) (array-ref s))))))))))
 
-(define-rotg cblas_srotg srotg 'f32 'f32)
-(define-rotg cblas_drotg drotg 'f64 'f64)
-(define-rotg cblas_crotg crotg 'c32 'f32)
-(define-rotg cblas_zrotg zrotg 'c64 'f64)
-
-(export cblas_srotg cblas_drotg cblas_crotg cblas_zrotg
-        srotg drotg crotg zrotg)
+(define-sdcz rotg cblas_?rotg ?rotg)
 
 
 ; -----------------------------
@@ -444,7 +446,6 @@ LEVEL 3
 (define-nrm2/asum 'f64 cblas_dnrm2  dnrm2)
 (define-nrm2/asum 'c32 cblas_scnrm2 cnrm2)
 (define-nrm2/asum 'c64 cblas_dznrm2 znrm2)
-
 (export cblas_snrm2 cblas_dnrm2 cblas_scnrm2 cblas_dznrm2 snrm2 dnrm2 cnrm2 znrm2)
 
 ; float cblas_sasum2 (const int N, const float *X, const int incX)
@@ -452,7 +453,6 @@ LEVEL 3
 (define-nrm2/asum 'f64 cblas_dasum  dasum)
 (define-nrm2/asum 'c32 cblas_scasum casum)
 (define-nrm2/asum 'c64 cblas_dzasum zasum)
-
 (export cblas_sasum cblas_dasum cblas_scasum cblas_dzasum sasum dasum casum zasum)
 
 
@@ -522,7 +522,6 @@ LEVEL 3
 (define-ger 'c32 cblas_cgerc cgerc!)
 (define-ger 'c64 cblas_zgeru zgeru!)
 (define-ger 'c64 cblas_zgerc zgerc!)
-
 (export cblas_sger cblas_dger cblas_cgeru cblas_cgerc cblas_zgeru cblas_zgerc
         sger! dger! cgeru! cgerc! zgeru! zgerc!)
 

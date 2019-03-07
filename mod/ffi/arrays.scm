@@ -52,7 +52,7 @@
   (define (subst-qmark stx-name t)
     (let* ((s (symbol->string (syntax->datum stx-name)))
            (i (string-index s #\?)))
-      (datum->syntax stx-name (string->symbol (string-replace s (symbol->string t) i (+ i 1)))))))
+      (datum->syntax stx-name (string->symbol (string-replace s t i (+ i 1)))))))
 
 (define-syntax define-sdcz
   (lambda (x)
@@ -62,7 +62,7 @@
          (cons #'begin
                (append-map
                 (lambda (tag t)
-                  (let ((fun (map (cut subst-qmark <> t) (syntax->list #'(n ...)))))
+                  (let ((fun (map (cut subst-qmark <> (symbol->string t)) (syntax->list #'(n ...)))))
 ; #`(quote #,(datum->syntax x tag)) to write out a symbol, but assembling docstrings seems harder (?)
                     (list (cons* #'definer (datum->syntax x tag) fun)
                           (cons* #'export fun))))
