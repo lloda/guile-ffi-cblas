@@ -129,7 +129,7 @@ void bli_?axpbyv
                           (scalar->arg type beta)
                           (pointer-to-first Y) (stride Y 0)))))))))
 
-(define-sdcz define-axpbyv bli_?axpbyv ?axpbyv!)
+(define-sdcz axpbyv bli_?axpbyv ?axpbyv!)
 
 (define (axpbyv! conjX alpha X beta Y)
   "
@@ -178,7 +178,7 @@ void bli_?axpyv
                           (pointer-to-first X) (stride X 0)
                           (pointer-to-first Y) (stride Y 0)))))))))
 
-(define-sdcz define-axpyv bli_?axpyv ?axpyv!)
+(define-sdcz axpyv bli_?axpyv ?axpyv!)
 
 (define (axpyv! conjX alpha X Y)
   "
@@ -230,7 +230,7 @@ void bli_?dotv
                             (pointer-to-first rho))
                  (array-ref rho)))))))))
 
-(define-sdcz define-dotv bli_?dotv ?dotv)
+(define-sdcz dotv bli_?dotv ?dotv)
 
 (define (dotv conjX conjY X Y)
   "
@@ -297,7 +297,7 @@ See also: sdotv ddotv cdotv vdotv"
                  (name! transA transB alpha A B 0. C)
                  C))))))))
 
-(define-sdcz define-gemm bli_?gemm ?gemm! ?gemm)
+(define-sdcz gemm bli_?gemm ?gemm! ?gemm)
 
 
 ; -----------------------------
@@ -346,7 +346,7 @@ See also: sdotv ddotv cdotv vdotv"
                  (name! transA conjX alpha A X 0 Y)
                  Y))))))))
 
-(define-sdcz define-gemv bli_?gemv ?gemv! ?gemv)
+(define-sdcz gemv bli_?gemv ?gemv! ?gemv)
 
 
 ; -----------------------------
@@ -392,4 +392,4 @@ See also: sdotv ddotv cdotv vdotv"
                  (name! conjX conjY alpha X Y A)
                  A))))))))
 
-(define-sdcz define-ger bli_?ger ?ger! ?ger)
+(define-sdcz ger bli_?ger ?ger! ?ger)

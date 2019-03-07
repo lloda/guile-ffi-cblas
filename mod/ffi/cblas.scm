@@ -223,7 +223,7 @@ LEVEL 3
 (define-syntax define-rotg
   (lambda (x)
     (syntax-case x ()
-      ((_ name cblas-name ctype stype)
+      ((_ cblas-name name ctype stype)
        (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name)))
                      (docstring (string-append (symbol->string (syntax->datum #'cblas-name))
                                                " a b -> (values c s)")))
@@ -244,10 +244,10 @@ LEVEL 3
                              (pointer-to-first s))
                  (values (array-ref c) (array-ref s))))))))))
 
-(define-rotg srotg cblas_srotg 'f32 'f32)
-(define-rotg drotg cblas_drotg 'f64 'f64)
-(define-rotg crotg cblas_crotg 'c32 'f32)
-(define-rotg zrotg cblas_zrotg 'c64 'f64)
+(define-rotg cblas_srotg srotg 'f32 'f32)
+(define-rotg cblas_drotg drotg 'f64 'f64)
+(define-rotg cblas_crotg crotg 'c32 'f32)
+(define-rotg cblas_zrotg zrotg 'c64 'f64)
 
 (export cblas_srotg cblas_drotg cblas_crotg cblas_zrotg
         srotg drotg crotg zrotg)
@@ -262,7 +262,7 @@ LEVEL 3
 (define-syntax define-dot-real
   (lambda (x)
     (syntax-case x ()
-      ((_ name cblas-name srfi4-type)
+      ((_  srfi4-type name cblas-name)
        (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name))))
          #'(begin
              (define cblas-name
@@ -275,16 +275,15 @@ LEVEL 3
                            (pointer-to-first A) (stride A 0)
                            (pointer-to-first B) (stride B 0)))))))))
 
-(define-dot-real sdot cblas_sdot 'f32)
-(define-dot-real ddot cblas_ddot 'f64)
+(define-dot-real 'f32 sdot cblas_sdot)
+(define-dot-real 'f64 ddot cblas_ddot)
 
-(export cblas_sdot cblas_ddot
-        sdot ddot)
+(export cblas_sdot cblas_ddot sdot ddot)
 
 (define-syntax define-dot-complex
   (lambda (x)
     (syntax-case x ()
-      ((_ name cblas-name srfi4-type)
+      ((_ srfi4-type cblas-name name)
        (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name))))
          #'(begin
              (define cblas-name
@@ -300,10 +299,10 @@ LEVEL 3
                              (pointer-to-first C))
                  (array-ref C)))))))))
 
-(define-dot-complex cdotu cblas_cdotu_sub 'c32)
-(define-dot-complex cdotc cblas_cdotc_sub 'c32)
-(define-dot-complex zdotu cblas_zdotu_sub 'c64)
-(define-dot-complex zdotc cblas_zdotc_sub 'c64)
+(define-dot-complex 'c32 cblas_cdotu_sub cdotu)
+(define-dot-complex 'c32 cblas_cdotc_sub cdotc)
+(define-dot-complex 'c64 cblas_zdotu_sub zdotu)
+(define-dot-complex 'c64 cblas_zdotc_sub zdotc)
 
 (export cdotu cdotc zdotu zdotc
         cblas_cdotu_sub cblas_cdotc_sub cblas_zdotu_sub cblas_zdotc_sub)
@@ -318,7 +317,7 @@ LEVEL 3
 (define-syntax define-copy
   (lambda (x)
     (syntax-case x ()
-      ((_ srfi4-type name cblas-name)
+      ((_ srfi4-type cblas-name name)
        (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name)))
                      (type #'(quote srfi4-type)))
          #'(begin
@@ -332,7 +331,7 @@ LEVEL 3
                            (pointer-to-first X) (stride X 0)
                            (pointer-to-first Y) (stride Y 0)))))))))
 
-(define-sdcz define-copy ?copy! cblas_?copy)
+(define-sdcz copy cblas_?copy ?copy!)
 
 
 ; -----------------------------
@@ -344,7 +343,7 @@ LEVEL 3
 (define-syntax define-swap
   (lambda (x)
     (syntax-case x ()
-      ((_ srfi4-type name cblas-name)
+      ((_ srfi4-type cblas-name name)
        (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name)))
                      (type #'(quote srfi4-type)))
          #'(begin
@@ -358,7 +357,7 @@ LEVEL 3
                            (pointer-to-first X) (stride X 0)
                            (pointer-to-first Y) (stride Y 0)))))))))
 
-(define-sdcz define-swap ?swap! cblas_?swap)
+(define-sdcz swap cblas_?swap ?swap!)
 
 
 ; -----------------------------
@@ -370,7 +369,7 @@ LEVEL 3
 (define-syntax define-axpy
   (lambda (x)
     (syntax-case x ()
-      ((_ srfi4-type name cblas-name)
+      ((_ srfi4-type cblas-name name)
        (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name)))
                      (type #'(quote srfi4-type)))
          #'(begin
@@ -384,7 +383,7 @@ LEVEL 3
                            (pointer-to-first X) (stride X 0)
                            (pointer-to-first Y) (stride Y 0)))))))))
 
-(define-sdcz define-axpy ?axpy! cblas_?axpy)
+(define-sdcz axpy cblas_?axpy ?axpy!)
 
 
 ; -----------------------------
@@ -395,27 +394,27 @@ LEVEL 3
 (define-syntax define-scal
   (lambda (x)
     (syntax-case x ()
-      ((_ name cblas-name srfi4-type scalar-srfi4-type)
-       (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name))))
+      ((_ ctype_ stype_ cblas-name name)
+       (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name)))
+                     (ctype #'(quote ctype_))
+                     (stype #'(quote stype_)))
          #'(begin
              (define cblas-name
                (pointer->procedure
                 void (dynamic-func cblas-name-string libcblas)
-                (list int (srfi4-type->type scalar-srfi4-type) '* int)))
+                (list int (srfi4-type->type stype) '* int)))
              (define (name alpha X)
-               (check-array X 1 srfi4-type)
-               (cblas-name (array-length X) (scalar->arg scalar-srfi4-type alpha)
-                           (pointer-to-first X) (stride X 0)))))))))
+               (check-array X 1 ctype)
+               (cblas-name (array-length X) (scalar->arg stype alpha)
+                           (pointer-to-first X) (stride X 0))))))
+      ((_ ctype cblas-name name)
+       #'(define-scal ctype ctype cblas-name name)))))
 
-(define-scal sscal! cblas_sscal 'f32 'f32)
-(define-scal dscal! cblas_dscal 'f64 'f64)
-(define-scal cscal! cblas_cscal 'c32 'c32)
-(define-scal zscal! cblas_zscal 'c64 'c64)
-(define-scal csscal! cblas_csscal 'c32 'f32)
-(define-scal zdscal! cblas_zdscal 'c64 'f64)
+(define-sdcz scal cblas_?scal ?scal!)
 
-(export cblas_sscal cblas_dscal cblas_cscal cblas_zscal cblas_csscal cblas_zdscal
-        sscal! dscal! cscal! zscal! csscal! zdscal!)
+(define-scal c32 f32 cblas_csscal csscal!)
+(define-scal c64 f64 cblas_zdscal zdscal!)
+(export cblas_csscal cblas_zdscal csscal! zdscal!)
 
 
 ; -----------------------------
@@ -430,7 +429,7 @@ LEVEL 3
 (define-syntax define-nrm2/asum
   (lambda (x)
     (syntax-case x ()
-      ((_ name cblas-name srfi4-type)
+      ((_ srfi4-type cblas-name name)
        (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name))))
          #'(begin
              (define cblas-name
@@ -441,26 +440,24 @@ LEVEL 3
                (check-array X 1 srfi4-type)
                (cblas-name (array-length X) (pointer-to-first X) (stride X 0)))))))))
 
-(define-nrm2/asum snrm2 cblas_snrm2 'f32)
-(define-nrm2/asum dnrm2 cblas_dnrm2 'f64)
-(define-nrm2/asum cnrm2 cblas_scnrm2 'c32)
-(define-nrm2/asum znrm2 cblas_dznrm2 'c64)
+(define-nrm2/asum 'f32 cblas_snrm2  snrm2)
+(define-nrm2/asum 'f64 cblas_dnrm2  dnrm2)
+(define-nrm2/asum 'c32 cblas_scnrm2 cnrm2)
+(define-nrm2/asum 'c64 cblas_dznrm2 znrm2)
 
-(export cblas_snrm2 cblas_dnrm2 cblas_scnrm2 cblas_dznrm2
-        snrm2 dnrm2 cnrm2 znrm2)
+(export cblas_snrm2 cblas_dnrm2 cblas_scnrm2 cblas_dznrm2 snrm2 dnrm2 cnrm2 znrm2)
 
 ; float cblas_sasum2 (const int N, const float *X, const int incX)
-(define-nrm2/asum sasum cblas_sasum 'f32)
-(define-nrm2/asum dasum cblas_dasum 'f64)
-(define-nrm2/asum casum cblas_scasum 'c32)
-(define-nrm2/asum zasum cblas_dzasum 'c64)
+(define-nrm2/asum 'f32 cblas_sasum  sasum)
+(define-nrm2/asum 'f64 cblas_dasum  dasum)
+(define-nrm2/asum 'c32 cblas_scasum casum)
+(define-nrm2/asum 'c64 cblas_dzasum zasum)
 
-(export cblas_sasum cblas_dasum cblas_scasum cblas_dzasum
-        sasum dasum casum zasum)
+(export cblas_sasum cblas_dasum cblas_scasum cblas_dzasum sasum dasum casum zasum)
 
 
 ; -----------------------------
-; i | max_j('absolute value'(X_j)) = X_i: isamax idamax icamax izamax
+; i | max_j('absolute value'(X_j)) = X_i: i?amax
 ; int cblas_isamax (const int N, const float *X, const int incX)
 ; -----------------------------
 
@@ -470,7 +467,7 @@ LEVEL 3
 (define-syntax define-iamax
   (lambda (x)
     (syntax-case x ()
-      ((_ srfi4-type name cblas-name)
+      ((_ srfi4-type cblas-name name)
        (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name)))
                      (type #'(quote srfi4-type)))
          #'(begin
@@ -482,7 +479,7 @@ LEVEL 3
                (check-array X 1 type)
                (cblas-name (array-length X) (pointer-to-first X) (stride X 0)))))))))
 
-(define-sdcz define-iamax i?amax cblas_i?amax)
+(define-sdcz iamax cblas_i?amax i?amax)
 
 
 ; -----------------------------
@@ -503,7 +500,7 @@ LEVEL 3
 (define-syntax define-ger
   (lambda (x)
     (syntax-case x ()
-      ((_ name cblas-name srfi4-type)
+      ((_ srfi4-type cblas-name name)
        (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name))))
          #'(begin
              (define cblas-name
@@ -519,12 +516,12 @@ LEVEL 3
                              (pointer-to-first Y) (stride Y 0)
                              (pointer-to-first A) A-lead)))))))))
 
-(define-ger sger! cblas_sger 'f32)
-(define-ger dger! cblas_dger 'f64)
-(define-ger cgeru! cblas_cgeru 'c32)
-(define-ger cgerc! cblas_cgerc 'c32)
-(define-ger zgeru! cblas_zgeru 'c64)
-(define-ger zgerc! cblas_zgerc 'c64)
+(define-ger 'f32 cblas_sger  sger!)
+(define-ger 'f64 cblas_dger  dger!)
+(define-ger 'c32 cblas_cgeru cgeru!)
+(define-ger 'c32 cblas_cgerc cgerc!)
+(define-ger 'c64 cblas_zgeru zgeru!)
+(define-ger 'c64 cblas_zgerc zgerc!)
 
 (export cblas_sger cblas_dger cblas_cgeru cblas_cgerc cblas_zgeru cblas_zgerc
         sger! dger! cgeru! cgerc! zgeru! zgerc!)
@@ -548,7 +545,7 @@ LEVEL 3
 (define-syntax define-gemv
   (lambda (x)
     (syntax-case x ()
-      ((_ srfi4-type name cblas-name)
+      ((_ srfi4-type cblas-name name)
        (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name)))
                      (type #'(quote srfi4-type)))
          #'(begin
@@ -569,7 +566,7 @@ LEVEL 3
                                (pointer-to-first X) (stride X 0) (scalar->arg type beta)
                                (pointer-to-first Y) (stride Y 0)))))))))))
 
-(define-sdcz define-gemv ?gemv! cblas_?gemv)
+(define-sdcz gemv cblas_?gemv ?gemv!)
 
 
 ; -----------------------------
@@ -584,7 +581,7 @@ LEVEL 3
 (define-syntax define-gemm
   (lambda (x)
     (syntax-case x ()
-      ((_ srfi4-type name cblas-name)
+      ((_ srfi4-type cblas-name name)
        (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name)))
                      (type #'(quote srfi4-type)))
          #'(begin
@@ -616,4 +613,4 @@ LEVEL 3
                                  (scalar->arg type beta)
                                  (pointer-to-first C) C-lead)))))))))))
 
-(define-sdcz define-gemm ?gemm! cblas_?gemm)
+(define-sdcz gemm cblas_?gemm ?gemm!)

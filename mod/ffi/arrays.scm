@@ -8,10 +8,11 @@
 ; later version.
 
 (define-module (ffi arrays)
-  #:export (srfi4-type-size
+  #:export (syntax->list
+            srfi4-type-size
             check-array check-2-arrays
             stride dim
-            syntax->list define-sdcz))
+            define-sdcz))
 
 (import (system foreign) (srfi srfi-1) (srfi srfi-11) (srfi srfi-26))
 
@@ -38,7 +39,7 @@
     ((f32) 4)
     ((f64 c32) 8)
     ((c64) 16)
-    (else (throw 'bad-array-type srfi4-type))))
+    (else (throw 'bad-srfi4-type-II srfi4-type))))
 
 ; https://www.scheme.com/csug8/syntax.html §11.3
 (define syntax->list
@@ -56,13 +57,14 @@
 (define-syntax define-sdcz
   (lambda (x)
     (syntax-case x ()
-      ((_ definer n ...)
-       (cons #'begin
-             (append-map
-              (lambda (tag t)
-                (let ((fun (map (cut subst-qmark <> t) (syntax->list #'(n ...)))))
+      ((_ root n ...)
+       (with-syntax ((definer (datum->syntax x (string->symbol (format #f "define-~a" (syntax->datum #'root))))))
+         (cons #'begin
+               (append-map
+                (lambda (tag t)
+                  (let ((fun (map (cut subst-qmark <> t) (syntax->list #'(n ...)))))
 ; #`(quote #,(datum->syntax x tag)) to write out a symbol, but assembling docstrings seems harder (?)
-                  (list (cons* #'definer (datum->syntax x tag) fun)
-                        (cons* #'export fun))))
-              '(f32 f64 c32 c64)
-              '(s d c z)))))))
+                    (list (cons* #'definer (datum->syntax x tag) fun)
+                          (cons* #'export fun))))
+                '(f32 f64 c32 c64)
+                '(s d c z))))))))
