@@ -5,8 +5,8 @@ Help: [C-uc .] insert timestamp [C-cc] flip checkbox [C-uucc] partial flip check
 * TODO coverage [0/0]
   * finish wrapping CBLAS [0/1]
     * [ ] see mod/ffi/cblas.scm
-  * wrap BLIS level 1v [1/2]
-    * [X] dotv axpyv axpbyv (the latter are missing the functional variant)
+  * wrap BLIS level 1v [0/2]
+    * [ ] dotv axpyv axpbyv (the latter are missing the functional variant)
     * [ ] addv amaxv copyv dotxv invertv scal2v scalv setv subv swapv xpbyvdotv
   * wrap BLIS level 1n [0/1]
     * [ ] addm axpym copym scalm scal2m setm subm

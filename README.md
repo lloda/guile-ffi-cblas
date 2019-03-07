@@ -108,17 +108,17 @@ $GUILE ... etc.
 
 ---
 
-#### CBLIS level 1
+#### BLIS level 1
 
 * sdaxpy ddaxpy cdaxpy zdaxpy
 * sdaxpby ddaxpby cdaxpby zdaxpby
 * sdotv ddotv cdotv zdotv
 
-#### CBLIS level 2
+#### BLIS level 2
 
 * sgemv dgemv cgemv zgemv
 * sger dger cger zger
 
-#### CBLIS level 3
+#### BLIS level 3
 
 * sgemm dgemm cgemm zgemm

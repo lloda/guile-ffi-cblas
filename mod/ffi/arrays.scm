@@ -50,9 +50,8 @@
 (eval-when (expand load eval)
   (define (subst-qmark stx-name t)
     (let* ((s (symbol->string (syntax->datum stx-name)))
-           (i (string-index s #\?))
-           (fmt (string-replace s "~a" i (+ i 1))))
-      (datum->syntax stx-name (string->symbol (format #f fmt t))))))
+           (i (string-index s #\?)))
+      (datum->syntax stx-name (string->symbol (string-replace s (symbol->string t) i (+ i 1)))))))
 
 (define-syntax define-sdcz
   (lambda (x)
