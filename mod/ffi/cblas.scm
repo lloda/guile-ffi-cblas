@@ -1,5 +1,4 @@
 
-; Access CBLAS through Guile's FFI.
 ; (c) Daniel Llorens - 2014-2015, 2017, 2019
 
 ; This library is free software; you can redistribute it and/or modify it under
@@ -7,12 +6,17 @@
 ; Software Foundation; either version 3 of the License, or (at your option) any
 ; later version.
 
+;;; Commentary:
+;; Access CBLAS (http://www.netlib.org/blas/#_cblas) through Guile's FFI.
+;;; Code:
+
 (define-module (ffi cblas))
-(import (system foreign) (srfi srfi-1) (srfi srfi-11) (ffi arrays) (ice-9 match))
+(import (system foreign) (srfi srfi-1) (srfi srfi-11) (ffi blis arrays)
+        (ice-9 match))
 
 ; TODO As an alternative go through installation.
-(define libcblas (dynamic-link (let ((lpath (getenv "GUILE_FFI_CBLAS_LIBCBLAS_PATH"))
-                                     (lname (or (getenv "GUILE_FFI_CBLAS_LIBCBLAS_NAME") "libcblas")))
+(define libcblas (dynamic-link (let ((lpath (getenv "GUILE_FFI_CBLAS_LIBPATH"))
+                                     (lname (or (getenv "GUILE_FFI_CBLAS_LIBNAME") "libcblas")))
                                  (if (and lpath (not (string=? lpath "")))
                                    (string-append lpath file-name-separator-string lname)
                                    lname))))

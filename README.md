@@ -9,20 +9,19 @@ The bindings for either library are entirely independent. You do not need to
 have **BLIS** installed to use the **CBLAS** bindings or viceversa. I am
 packaging them together because they happen to share some code.
 
-**CBLAS** (or **BLAS**) is an established standard. It's by far the more popular
-library, and it probably has the fastest implementation on your
-system. However **BLIS** is much more regular and nicer to program against.
-These bindings are for the ‘typed’ API
+**CBLAS** (or **BLAS**) is by far the more popular library, and it probably has
+the fastest implementation on your system. However **BLIS** is much more regular
+and nicer to program for.  These bindings are for the **BLIS**' ‘typed’ API
 (https://github.com/flame/blis/blob/master/docs/BLISTypedAPI.md).
 
 Both sets of bindings work in the same way. Upon importing `(ffi cblas)` (or
 `(ffi blis)`), the bindings will attempt to load **CBLAS** (or **BLIS**)
 dynamically from the default dynamic library path. If your **CBLAS** (or
 **BLIS**) is somewhere else, you can specify a path with the environment
-variable `GUILE_FFI_CBLAS_LIBCBLAS_PATH` (or
-`GUILE_FFI_CBLAS_LIBBLIS_PATH`). You can configure the name of the library
-itself with `GUILE_FFI_CBLAS_LIBCBLAS_NAME` (or
-`GUILE_FFI_CBLAS_LIBBLIS_NAME`). The default name is `libcblas` (or
+variable `GUILE_FFI_CBLAS_LIBPATH` (or
+`GUILE_FFI_BLIS_LIBPATH`). You can configure the name of the library
+itself with `GUILE_FFI_CBLAS_LIBNAME` (or
+`GUILE_FFI_BLIS_LIBNAME`). The default name is `libcblas` (or
 `libblis`). For example, on my system, the **CBLAS** library is actually called
 `libtatlas`.
 
@@ -76,8 +75,8 @@ $GUILE -L mod -s test/test-ffi-blis.scm
 Depending on your installation (see above) you might need
 
 ```
-GUILE_FFI_CBLAS_LIBCBLAS_NAME=libotherblas \
-GUILE_FFI_CBLAS_LIBCBLAS_PATH=/custom/path/lib \
+GUILE_FFI_CBLAS_LIBNAME=libotherblas \
+GUILE_FFI_CBLAS_LIBPATH=/custom/path/lib \
 $GUILE ... etc.
 ```
 

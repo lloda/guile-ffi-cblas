@@ -1,5 +1,4 @@
 
-; Access BLIS through Guile's FFI.
 ; (c) Daniel Llorens - 2014-2015, 2019
 
 ; This library is free software; you can redistribute it and/or modify it under
@@ -7,12 +6,18 @@
 ; Software Foundation; either version 3 of the License, or (at your option) any
 ; later version.
 
+;;; Commentary:
+;; Access BLIS (https://github.com/flame/blis/blob/master/docs/BLISTypedAPI.md)
+;; through Guile's FFI.
+;;; Code:
+
 (define-module (ffi blis))
-(import (system foreign) (srfi srfi-1) (srfi srfi-11) (ffi arrays) (ice-9 match) (srfi srfi-26))
+(import (system foreign) (srfi srfi-1) (srfi srfi-11) (ffi blis arrays)
+        (ice-9 match) (srfi srfi-26))
 
 ; TODO As an alternative go through installation.
-(define libblis (dynamic-link (let ((lpath (getenv "GUILE_FFI_CBLAS_LIBBLIS_PATH"))
-                                     (lname (or (getenv "GUILE_FFI_CBLAS_LIBBLIS_NAME") "libblis")))
+(define libblis (dynamic-link (let ((lpath (getenv "GUILE_FFI_BLIS_LIBPATH"))
+                                     (lname (or (getenv "GUILE_FFI_BLIS_LIBNAME") "libblis")))
                                  (if (and lpath (not (string=? lpath "")))
                                    (string-append lpath file-name-separator-string lname)
                                    lname))))

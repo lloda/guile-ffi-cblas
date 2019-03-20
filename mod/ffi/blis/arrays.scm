@@ -7,7 +7,7 @@
 ; Software Foundation; either version 3 of the License, or (at your option) any
 ; later version.
 
-(define-module (ffi arrays)
+(define-module (ffi blis arrays)
   #:export (syntax->list
             srfi4-type-size
             check-array check-2-arrays
