@@ -22,28 +22,28 @@
                   test expected)
   (test-end tag))
 
-
-; -----------------------------
-; srotg drotg crotg zrotg
-; -----------------------------
+;; 
+;; ; -----------------------------
+;; ; srotg drotg crotg zrotg
+;; ; -----------------------------
 
-(test-begin "rotg")
-(map (match-lambda
-       ((a b cref sref)
-        (map (match-lambda
-               ((rotg eps)
-                (receive (c s) (rotg a b)
-                  (test-approximate cref c eps)
-                  (test-approximate sref s eps))))
-          `((,srotg 1e-7)
-            (,crotg 1e-7)
-            (,drotg 1e-15)
-            (,zrotg 1e-15)))))
-  `((1. 0. 1. 0.)
-    (0. 1. 0. 1.)
-    (1. 1. ,(sqrt .5) ,(sqrt .5))
-    (-1. -1. ,(sqrt .5) ,(sqrt .5))))
-(test-end "rotg")
+;; (test-begin "rotg")
+;; (map (match-lambda
+;;        ((a b cref sref)
+;;         (map (match-lambda
+;;                ((rotg eps)
+;;                 (receive (c s) (rotg a b)
+;;                   (test-approximate cref c eps)
+;;                   (test-approximate sref s eps))))
+;;           `((,srotg 1e-7)
+;;             (,crotg 1e-7)
+;;             (,drotg 1e-15)
+;;             (,zrotg 1e-15)))))
+;;   `((1. 0. 1. 0.)
+;;     (0. 1. 0. 1.)
+;;     (1. 1. ,(sqrt .5) ,(sqrt .5))
+;;     (-1. -1. ,(sqrt .5) ,(sqrt .5))))
+;; (test-end "rotg")
 
 
 ; ---------------------------------
