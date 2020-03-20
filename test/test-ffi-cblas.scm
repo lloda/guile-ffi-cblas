@@ -1,7 +1,7 @@
-
+; -*- mode: scheme; coding: utf-8 -*-
 ; Tests for (ffi cblas).
-; (c) Daniel Llorens - 2014, 2017, 2019
 
+; (c) Daniel Llorens - 2014, 2017, 2019
 ; This library is free software; you can redistribute it and/or modify it under
 ; the terms of the GNU Lesser General Public License as published by the Free
 ; Software Foundation; either version 3 of the License, or (at your option) any
@@ -11,6 +11,8 @@
 (include "common.scm")
 
 (set! test-log-to-file #f)
+(unless (not test-log-to-file)
+  (error))
 
 ; ---------------------------------
 ; Test types
@@ -24,26 +26,27 @@
 
 
 ; -----------------------------
-; srotg drotg crotg zrotg
+; srotg drotg crotg zrotg. Some versions of CBLAS don't provide these...
 ; -----------------------------
 
-(test-begin "rotg")
-(map (match-lambda
-       ((a b cref sref)
-        (map (match-lambda
-               ((rotg eps)
-                (receive (c s) (rotg a b)
-                  (test-approximate cref c eps)
-                  (test-approximate sref s eps))))
-          `((,srotg 1e-7)
-            (,crotg 1e-7)
-            (,drotg 1e-15)
-            (,zrotg 1e-15)))))
-  `((1. 0. 1. 0.)
-    (0. 1. 0. 1.)
-    (1. 1. ,(sqrt .5) ,(sqrt .5))
-    (-1. -1. ,(sqrt .5) ,(sqrt .5))))
-(test-end "rotg")
+(when (defined? 'srotg)
+  (test-begin "rotg")
+  (map (match-lambda
+         ((a b cref sref)
+          (map (match-lambda
+                 ((rotg eps)
+                  (receive (c s) (rotg a b)
+                    (test-approximate cref c eps)
+                    (test-approximate sref s eps))))
+            `((,srotg 1e-7)
+              (,crotg 1e-7)
+              (,drotg 1e-15)
+              (,zrotg 1e-15)))))
+    `((1. 0. 1. 0.)
+      (0. 1. 0. 1.)
+      (1. 1. ,(sqrt .5) ,(sqrt .5))
+      (-1. -1. ,(sqrt .5) ,(sqrt .5))))
+  (test-end "rotg"))
 
 
 ; ---------------------------------
