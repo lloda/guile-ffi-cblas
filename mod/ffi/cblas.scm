@@ -12,14 +12,19 @@
 
 (define-module (ffi cblas))
 (import (system foreign) (srfi srfi-1) (srfi srfi-11) (ffi blis arrays)
-        (ice-9 match))
+          (ice-9 match))
 
 ; TODO As an alternative go through installation.
-(define libcblas (dynamic-link (let ((lpath (getenv "GUILE_FFI_CBLAS_LIBPATH"))
-                                     (lname (or (getenv "GUILE_FFI_CBLAS_LIBNAME") "libcblas")))
-                                 (if (and lpath (not (string=? lpath "")))
-                                   (string-append lpath file-name-separator-string lname)
-                                   lname))))
+(eval-when (compile load eval)
+  (define libcblas (dynamic-link (let ((lpath (getenv "GUILE_FFI_CBLAS_LIBPATH"))
+                                       (lname (or (getenv "GUILE_FFI_CBLAS_LIBNAME") "libcblas")))
+                                   (if (and lpath (not (string=? lpath "")))
+                                     (string-append lpath file-name-separator-string lname)
+                                     lname))))
+  (define have-rotg?
+    (catch #t
+      (lambda () (dynamic-func "cblas_crotg" libcblas))
+      (lambda args #f))))
 
 
 ; -----------------------------
@@ -223,40 +228,42 @@ LEVEL 3
         CTRSM - solving triangular matrix with multiple right hand sides
 |#
 
-;; 
-;; ; -----------------------------
-;; ; a b -> (values c s): srotg drotg crotg zrotg
-;; ; -----------------------------
+
+; -----------------------------
+; a b -> (values c s): srotg drotg crotg zrotg
+; -----------------------------
 
-;; ; TODO pointer-to-this-value support in the ffi, for old C decls that take double * for complex.
-;; ; int cblas_srotg ( FIXME )
-;; (define-syntax define-rotg
-;;   (lambda (x)
-;;     (syntax-case x ()
-;;       ((_ type_ cblas-name name)
-;;        (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name)))
-;;                      (ctype #'(quote type_))
-;;                      (stype #'(srfi4-type->real (syntax->datum #'type_)))
-;;                      (docstring (string-append (symbol->string (syntax->datum #'cblas-name))
-;;                                                " a b -> (values c s)")))
-;;          #'(begin
-;;              (define cblas-name
-;;                (pointer->procedure
-;;                 void (dynamic-func cblas-name-string libcblas)
-;;                 (list '* '* '* '*)))
-;;              (define (name a b)
-;;                docstring
-;;                (let* ((a (make-typed-array ctype a))
-;;                       (b (make-typed-array ctype b))
-;;                       (c (make-typed-array stype *unspecified*))
-;;                       (s (make-typed-array ctype *unspecified*)))
-;;                  (cblas-name (pointer-to-first a)
-;;                              (pointer-to-first b)
-;;                              (pointer-to-first c)
-;;                              (pointer-to-first s))
-;;                  (values (array-ref c) (array-ref s))))))))))
+; TODO pointer-to-this-value support in the ffi, for old C decls that take double * for complex.
+; int cblas_srotg ( FIXME )
+(define-syntax define-rotg
+  (lambda (x)
+    (syntax-case x ()
+      ((_ type_ cblas-name name)
+       (with-syntax ((cblas-name-string (symbol->string (syntax->datum #'cblas-name)))
+                     (ctype #'(quote type_))
+                     (stype #'(srfi4-type->real (syntax->datum #'type_)))
+                     (docstring (string-append (symbol->string (syntax->datum #'cblas-name))
+                                               " a b -> (values c s)")))
+         (if have-rotg?
+           #'(begin
+               (define cblas-name
+                 (pointer->procedure
+                  void (dynamic-func cblas-name-string libcblas)
+                  (list '* '* '* '*)))
+               (define (name a b)
+                 docstring
+                 (let* ((a (make-typed-array ctype a))
+                        (b (make-typed-array ctype b))
+                        (c (make-typed-array stype *unspecified*))
+                        (s (make-typed-array ctype *unspecified*)))
+                   (cblas-name (pointer-to-first a)
+                               (pointer-to-first b)
+                               (pointer-to-first c)
+                               (pointer-to-first s))
+                   (values (array-ref c) (array-ref s)))))
+           #'(if #f #f)))))))
 
-;; (define-sdcz rotg cblas_?rotg ?rotg)
+(define-sdcz rotg cblas_?rotg ?rotg)
 
 
 ; -----------------------------

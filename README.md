@@ -12,7 +12,7 @@ packaging them together because they happen to share some code.
 **CBLAS** (or **BLAS**) is by far the more popular library, and it probably has
 the fastest implementation on your system. However **BLIS** is much more regular
 and nicer to program for.  These bindings are for the **BLIS**' ‘typed’ API
-(https://github.com/flame/blis/blob/master/docs/BLISTypedAPI.md).
+[(https://github.com/flame/blis/blob/master/docs/BLISTypedAPI.md)](https://github.com/flame/blis/blob/master/docs/BLISTypedAPI.md).
 
 Both sets of bindings work in the same way. Upon importing `(ffi cblas)` (or
 `(ffi blis)`), the bindings will attempt to load **CBLAS** (or **BLIS**)
@@ -22,8 +22,8 @@ variable `GUILE_FFI_CBLAS_LIBPATH` (or
 `GUILE_FFI_BLIS_LIBPATH`). You can configure the name of the library
 itself with `GUILE_FFI_CBLAS_LIBNAME` (or
 `GUILE_FFI_BLIS_LIBNAME`). The default name is `libcblas` (or
-`libblis`). For example, on my system, the **CBLAS** library is actually called
-`libtatlas`.
+`libblis`). Unfortunately the name of `libcblas` seems to be variable; a couple
+of possible names are `libblas` and `libatlas`.
 
 There are up to three bindings for each function, here using `ZGEMM` as an
 example:
@@ -80,13 +80,15 @@ GUILE_FFI_CBLAS_LIBPATH=/custom/path/lib \
 $GUILE ... etc.
 ```
 
+and similarly for `BLIS`.
+
 ### Coverage
 
 ---
 
 #### CBLAS level 1
 
-* srotg drotg crotg zrotg
+* srotg drotg crotg zrotg <sup id="a1">[1](#f1)</sup>
 * sscal dscal cscal zscal csscal zdscal
 * sswap dswap cswap zswap
 * scopy dcopy ccopy zcopy
@@ -95,6 +97,8 @@ $GUILE ... etc.
 * snrm2 dnrm2 scnrm2 dznrm2
 * sasum dasum scasum dzasum
 * isamax idamax icamax izamax
+
+<b id="f1">¹</b> Some distributions of `libcblas` do not provide these. [↩](#a1)
 
 #### CBLAS level 2
 
