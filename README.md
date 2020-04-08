@@ -5,28 +5,19 @@ This is a set of Guile FFI bindings for two libraries of linear algebra
 subprograms, **CBLAS** and **BLIS**. They provide operations such as vector dot
 product, matrix-vector product, matrix-matrix product, and so on.
 
-The bindings for either library are entirely independent. You do not need to
+The bindings for either library are independent of each other; you do not need to
 have **BLIS** installed to use the **CBLAS** bindings or viceversa. I am
-packaging them together because they happen to share some code.
+packaging them together because they share a fair amount of code.
 
-**CBLAS** (or **BLAS**) is by far the more popular library, and it probably has
-the fastest implementation on your system. However **BLIS** is much more regular
-and nicer to program for.  These bindings are for the **BLIS**' ‘typed’ API
-[(https://github.com/flame/blis/blob/master/docs/BLISTypedAPI.md)](https://github.com/flame/blis/blob/master/docs/BLISTypedAPI.md).
+**CBLAS** (or **BLAS**) is by far the more popular library<sup id="a1">[1](#f1)</sup>,
+and it probably has the fastest implementation on your system. However **BLIS**
+is much more regular and nicer to program for.  These bindings are for the **BLIS**'
+‘typed’ API.<sup id="a2">[2](#f2)</sup>
 
 Both sets of bindings work in the same way. Upon importing `(ffi cblas)` (or
-`(ffi blis)`), the bindings will attempt to load **CBLAS** (or **BLIS**)
-dynamically from the default dynamic library path. If your **CBLAS** (or
-**BLIS**) is somewhere else, you can specify a path with the environment
-variable `GUILE_FFI_CBLAS_LIBPATH` (or
-`GUILE_FFI_BLIS_LIBPATH`). You can configure the name of the library
-itself with `GUILE_FFI_CBLAS_LIBNAME` (or
-`GUILE_FFI_BLIS_LIBNAME`). The default name is `libcblas` (or
-`libblis`). Unfortunately the name of `libcblas` seems to be variable; a couple
-of possible names are `libblas` and `libatlas`.
-
-There are up to three bindings for each function, here using `ZGEMM` as an
-example:
+`(ffi blis)`), **CBLAS** (or **BLIS**) will be loaded from the default dynamic
+library path (see ‘Installation notes’ below). There are up to three bindings
+for each function, here using `ZGEMM` as an example:
 
 - `cblas_zgemm` (raw binding): the raw C function by `pointer->procedure`. Don't
   use this if you aren't familiar with Guile's FFI.
@@ -63,6 +54,28 @@ example, negative strides require specific handling for **CBLAS** and are not
 supported yet. **BLIS** doesn't mess up negative strides, so it avoids
 this problem.
 
+<b id="f1">¹</b> See [http://www.netlib.org/blas/](http://www.netlib.org/blas/) or [https://en.wikipedia.org/wiki/Basic_Linear_Algebra_Subprograms](https://en.wikipedia.org/wiki/Basic_Linear_Algebra_Subprograms). [↩](#a1)
+
+<b id="f2">²</b> See [(https://github.com/flame/blis/blob/master/docs/BLISTypedAPI.md)](https://github.com/flame/blis/blob/master/docs/BLISTypedAPI.md). [↩](#a2)
+
+### Installation notes
+
+`guile-ffi-cblas` uses `dynamic-link` to load the dynamic libraries for
+**CBLAS**/**BLIS**. To do this, the names of the respective library files must
+be known. The default names `libcblas`/`libblis` can be configured with the
+environment variables `GUILE_FFI_CBLAS_LIBNAME`/`GUILE_FFI_BLIS_LIBNAME`. The
+name for **BLIS** is a safe bet but the name for **CBLAS** is sadly variable;
+possible alternative names are `libblas` or `libatlas`.
+
+If your **CBLAS**/**BLIS** libraries are not installed in the default dynamic
+library search path, you can configure specific paths for `guile-ffi-cblas` with
+the environment variables
+`GUILE_FFI_CBLAS_LIBPATH`/`GUILE_FFI_BLIS_LIBPATH`. There are other variables
+that control where `dynamic-link` searches for libraries (`LTDL_LIBRARY_PATH`,
+`LD_LIBRARY_PATH`) and you may prefer to set those instead. See also
+[https://notabug.org/ZelphirKaltstahl/guile-ml#using-guile-ffi-cblas](https://notabug.org/ZelphirKaltstahl/guile-ml#using-guile-ffi-cblas) for
+notes on using `guile-ffi-cblas` on Guix.
+
 ### Running the tests
 
 The tests use SRFI-64.
@@ -88,7 +101,7 @@ and similarly for `BLIS`.
 
 #### CBLAS level 1
 
-* srotg drotg crotg zrotg <sup id="a1">[1](#f1)</sup>
+* srotg drotg crotg zrotg <sup id="a3">[3](#f3)</sup>
 * sscal dscal cscal zscal csscal zdscal
 * sswap dswap cswap zswap
 * scopy dcopy ccopy zcopy
@@ -98,7 +111,7 @@ and similarly for `BLIS`.
 * sasum dasum scasum dzasum
 * isamax idamax icamax izamax
 
-<b id="f1">¹</b> Some distributions of `libcblas` do not provide these. [↩](#a1)
+<b id="f3">³</b> Some distributions of `libcblas` do not provide these. `guile-ffi-cblas` will still work, just without these bindings. [↩](#a3)
 
 #### CBLAS level 2
 

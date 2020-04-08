@@ -11,8 +11,6 @@
 (include "common.scm")
 
 (set! test-log-to-file #f)
-(unless (not test-log-to-file)
-  (error))
 
 ; ---------------------------------
 ; Test types
