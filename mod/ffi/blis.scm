@@ -1,6 +1,7 @@
+; -*- mode: scheme; coding: utf-8 -*-
+; BLIS FFI module.
 
-; (c) Daniel Llorens - 2014-2015, 2019
-
+; (c) Daniel Llorens - 2014-2015, 2019-2020
 ; This library is free software; you can redistribute it and/or modify it under
 ; the terms of the GNU Lesser General Public License as published by the Free
 ; Software Foundation; either version 3 of the License, or (at your option) any
@@ -93,6 +94,23 @@
         BLIS_NONUNIT_DIAG BLIS_UNIT_DIAG
         BLIS_ZEROS BLIS_LOWER BLIS_UPPER BLIS_DENSE
         BLIS_LEFT BLIS_RIGHT)
+
+
+; -----------------------------
+; BLIS configuration
+; -----------------------------
+
+(define BLIS_NO_ERROR_CHECKING 0)
+(define BLIS_FULL_ERROR_CHECKING 1)
+
+(define bli_error_checking_level_set
+  (pointer->procedure void (dynamic-func "bli_error_checking_level_set" libblis) (list gint_t)))
+(define (bli-error-checking-level-set level)
+  (unless (<= 0 level 1) (throw 'invalid-error-checking-level level))
+  (bli_error_checking_level_set level))
+
+(export BLIS_NO_ERROR_CHECKING BLIS_FULL_ERROR_CHECKING
+        bli-error-checking-level-set)
 
 
 ; -----------------------------

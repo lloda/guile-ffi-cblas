@@ -1,6 +1,6 @@
 
 ; Used by tests for (ffi blis).
-; (c) Daniel Llorens - 2014
+; (c) Daniel Llorens - 2014, 2020
 
 ; This library is free software; you can redistribute it and/or modify it under
 ; the terms of the GNU Lesser General Public License as published by the Free
@@ -24,6 +24,9 @@
 
 (define (make-v-strided-reversed type)
   (make-shared-array (make-typed-array type *unspecified* 20) (lambda (i) (list (- 19 (* i 2)))) 10))
+
+(define (make-v-z type)
+  (make-shared-array (make-typed-array type *unspecified*) (lambda (i) (list)) 10))
 
 (define (fill-A1! A)
   (case (array-type A)
@@ -56,6 +59,21 @@
 
 (define (make-M-offset type)
   (make-shared-array (make-typed-array type *unspecified* 12 13) (lambda (i j) (list (+ i 2) (+ j 3))) 10 10))
+
+(define (make-M-z0 type)
+  (make-shared-array (make-typed-array type *unspecified* 12) (lambda (i j) (list (+ 2 j))) 10 10))
+
+(define (make-M-z1 type)
+  (make-shared-array (make-typed-array type *unspecified* 12) (lambda (i j) (list (+ 2 i))) 10 10))
+
+(define (make-M-z00 type)
+  (make-shared-array (make-typed-array type *unspecified*) (lambda (i j) (list)) 10 10))
+
+(define (make-M-overlap type)
+  (make-shared-array (make-typed-array type *unspecified* 20) (lambda (i j) (list (+ i j))) 10 10))
+
+(define (make-M-overlap-reversed type)
+  (make-shared-array (make-typed-array type *unspecified* 20) (lambda (i j) (list (- 18 i j))) 10 10))
 
 (define (fill-A2! A)
   (case (array-type A)

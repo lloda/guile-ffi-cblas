@@ -37,7 +37,22 @@ extract the required strides from the array arguments. However, since
 **CBLAS** doesn't support arbitrary strides (e.g. it only supports a column
 stride for matrix arguments, assuming column-major order), some array arguments
 will cause the typed binding to fail, or result in extra copies with the
-functional binding. **BLIS** doesn't have this problem.
+functional binding.
+
+The situation with **BLIS** is a bit complicated. By default (2020/07) **BLIS**
+will flag overlapping stride combinations in any of the array arguments as
+errors, even when the result is well defined. However, if you disable **BLIS**'
+internal error checking with `(bli-error-checking-level-set
+BLIS_NO_ERROR_CHECKING)` **BLIS** will produce the correct result, as far as
+I've been able to verify. `(ffi blis)` performs independent shape checks on the
+typed and functional bindings, and the array arguments have valid strides by
+construction, so the lack of error checking by **BLIS** itself isn't necessarily
+a problem. The test suite includes tests with a variety of overlapping stride
+combinations for `gemm` and `gemv`. Still, **BLIS** doesn't *officially* support
+these strides. Note that if the *destination* argument has overlapping strides,
+then the result depends on the order in which the operations are carried out and
+is pretty much undefined. `(ffi blis)` will *not* check the destination argument
+for this error.
 
 If the function doesn't return an array (e.g. `cdot`) then we only provide
 two bindings (e.g. `cblas_cdot` and `cdot`).

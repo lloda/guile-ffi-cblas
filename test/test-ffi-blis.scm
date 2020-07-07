@@ -1,7 +1,7 @@
 ; -*- mode: scheme; coding: utf-8 -*-
 ; Tests for (ffi blis).
 
-; (c) Daniel Llorens - 2014-2015, 2019
+; (c) Daniel Llorens - 2014-2015, 2019-2020
 ; This library is free software; you can redistribute it and/or modify it under
 ; the terms of the GNU Lesser General Public License as published by the Free
 ; Software Foundation; either version 3 of the License, or (at your option) any
@@ -20,6 +20,9 @@
         ((equal? flag BLIS_CONJ_TRANSPOSE)
          (let ((B (array-copy A))) (array-map! B conj A) (transpose-array B 1 0)))
         (else (throw 'bad-transpose-flag flag))))
+
+; to be disabled/relaxed for specific tests, see below
+(bli-error-checking-level-set BLIS_FULL_ERROR_CHECKING)
 
 
 ; ---------------------------------
@@ -146,6 +149,8 @@
     ;; (test-approximate-array tag C1 C2 1e-15) ; TODO as a single test.
     (test-begin tag)
     (test-equal C1 C2)
+    (test-equal AA A)
+    (test-equal BB B)
     (test-end tag)))
 
 (for-each
@@ -164,17 +169,28 @@
         (test-gemm "gemm-4" dgemm! BLIS_TRANSPOSE BLIS_TRANSPOSE 1. A B 1. (transpose-array C 1 0))
         (test-gemm "gemm-5" dgemm! BLIS_NO_TRANSPOSE BLIS_TRANSPOSE 1. A C 1. (transpose-array B 1 0))
         (test-gemm "gemm-6" dgemm! BLIS_TRANSPOSE BLIS_NO_TRANSPOSE 1. C B 1. (transpose-array A 1 0)))
-      (for-each
-       (match-lambda ((make-A make-B make-C transA transB)
-                      (test-gemm (format #f "gemm:~a:~a:~a:~a:~a:~a" type (procedure-name make-A)
-                                         (procedure-name make-B) (procedure-name make-C)
-                                         transA transB)
-                                 gemm! transA transB 3. (fill-A2! (make-A type))
-                                 (fill-A2! (make-B type)) 2. (fill-A2! (make-C type)))))
-       (apply list-product
-         (append (make-list 3 (list make-M-c-order make-M-fortran-order make-M-offset
+
+      (define (with-matrix-types types-AB types-C)
+        (for-each
+            (match-lambda ((make-A make-B make-C transA transB)
+                           (test-gemm (format #f "gemm:~a:~a:~a:~a:~a:~a" type (procedure-name make-A)
+                                              (procedure-name make-B) (procedure-name make-C)
+                                              transA transB)
+                                      gemm! transA transB 3. (fill-A2! (make-A type))
+                                      (fill-A2! (make-B type)) 2. (fill-A2! (make-C type)))))
+          (apply list-product
+            (append (list types-AB types-AB types-C)
+                    (make-list 2 (list BLIS_TRANSPOSE BLIS_NO_TRANSPOSE
+                                       BLIS_CONJ_NO_TRANSPOSE BLIS_CONJ_TRANSPOSE))))))
+
+      (define with-overlap (list make-M-z1 make-M-z1 make-M-z00 make-M-overlap make-M-overlap-reversed))
+      (define without-overlap (list make-M-c-order make-M-fortran-order make-M-offset
                                     make-M-strided make-M-strided-both make-M-strided-reversed))
-                 (make-list 2 (list BLIS_TRANSPOSE BLIS_NO_TRANSPOSE BLIS_CONJ_NO_TRANSPOSE BLIS_CONJ_TRANSPOSE)))))))
+
+      (bli-error-checking-level-set BLIS_NO_ERROR_CHECKING)
+      (with-matrix-types with-overlap without-overlap)
+      (bli-error-checking-level-set BLIS_FULL_ERROR_CHECKING)
+      (with-matrix-types without-overlap without-overlap)))
  `((f32 ,sgemm!)
    (f64 ,dgemm!)
    (c32 ,cgemm!)
@@ -208,30 +224,46 @@
     ;; (test-approximate-array tag Y1 Y2 1e-15) ; TODO as a single test.
     (test-begin tag)
     (test-equal Y1 Y2)
+    (test-equal AA A)
+    (test-equal XX X)
     (test-end tag)))
 
 (for-each
- (match-lambda
-     ((type gemv!)
+    (match-lambda
+      ((type gemv!)
 ; TODO some extra tests with non-square matrices.
-      (for-each
-       (match-lambda ((make-A make-X make-Y transA conjX)
-                      (test-gemv (format #f "gemv:~a:~a:~a:~a:~a:~a" type (procedure-name make-A)
-                                         (procedure-name make-X) (procedure-name make-Y)
-                                         transA conjX)
-                                 gemv! transA conjX 3. (fill-A2! (make-A type))
-                                 (fill-A1! (make-X type)) 2. (fill-A1! (make-Y type)))))
-       (apply list-product
-         (list (list make-M-c-order make-M-fortran-order make-M-offset
-                     make-M-strided make-M-strided-both make-M-strided-reversed)
-               (list make-v-compact make-v-strided make-v-offset make-v-strided-reversed)
-               (list make-v-compact make-v-strided make-v-offset make-v-strided-reversed)
-               (list BLIS_TRANSPOSE BLIS_NO_TRANSPOSE BLIS_CONJ_NO_TRANSPOSE BLIS_CONJ_TRANSPOSE)
-               (list BLIS_NO_CONJUGATE BLIS_CONJUGATE))))))
- `((f32 ,sgemv!)
-   (f64 ,dgemv!)
-   (c32 ,cgemv!)
-   (c64 ,zgemv!)))
+       (define (with-types M-types v1-types v2-types)
+         (for-each
+             (match-lambda ((make-A make-X make-Y transA conjX)
+                            (test-gemv (format #f "gemv:~a:~a:~a:~a:~a:~a" type (procedure-name make-A)
+                                               (procedure-name make-X) (procedure-name make-Y)
+                                               transA conjX)
+                                       gemv! transA conjX 3. (fill-A2! (make-A type))
+                                       (fill-A1! (make-X type)) 2. (fill-A1! (make-Y type)))))
+
+           (apply list-product
+             (list M-types v1-types v2-types
+                   (list BLIS_TRANSPOSE BLIS_NO_TRANSPOSE BLIS_CONJ_NO_TRANSPOSE BLIS_CONJ_TRANSPOSE)
+                   (list BLIS_NO_CONJUGATE BLIS_CONJUGATE)))))
+
+       (bli-error-checking-level-set BLIS_FULL_ERROR_CHECKING)
+       (with-types (list make-M-z1 make-M-z1 make-M-z00 make-M-overlap make-M-overlap-reversed)
+                   (list make-v-compact make-v-strided make-v-offset make-v-strided-reversed)
+                   (list make-v-compact make-v-strided make-v-offset make-v-strided-reversed))
+       (with-types (list make-M-c-order make-M-fortran-order make-M-offset
+                         make-M-strided make-M-strided-both make-M-strided-reversed)
+                   (list make-v-z)
+                   (list make-v-compact make-v-strided make-v-offset make-v-strided-reversed))
+       (bli-error-checking-level-set BLIS_FULL_ERROR_CHECKING)
+
+       (with-types (list make-M-c-order make-M-fortran-order make-M-offset
+                         make-M-strided make-M-strided-both make-M-strided-reversed)
+                   (list make-v-compact make-v-strided make-v-offset make-v-strided-reversed)
+                   (list make-v-compact make-v-strided make-v-offset make-v-strided-reversed))))
+  `((f32 ,sgemv!)
+    (f64 ,dgemv!)
+    (c32 ,cgemv!)
+    (c64 ,zgemv!)))
 
 
 ; ---------------------------------
