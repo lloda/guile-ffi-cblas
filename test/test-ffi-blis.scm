@@ -246,20 +246,17 @@
                    (list BLIS_TRANSPOSE BLIS_NO_TRANSPOSE BLIS_CONJ_NO_TRANSPOSE BLIS_CONJ_TRANSPOSE)
                    (list BLIS_NO_CONJUGATE BLIS_CONJUGATE)))))
 
-       (bli-error-checking-level-set BLIS_FULL_ERROR_CHECKING)
-       (with-types (list make-M-z1 make-M-z1 make-M-z00 make-M-overlap make-M-overlap-reversed)
-                   (list make-v-compact make-v-strided make-v-offset make-v-strided-reversed)
-                   (list make-v-compact make-v-strided make-v-offset make-v-strided-reversed))
-       (with-types (list make-M-c-order make-M-fortran-order make-M-offset
-                         make-M-strided make-M-strided-both make-M-strided-reversed)
-                   (list make-v-z)
-                   (list make-v-compact make-v-strided make-v-offset make-v-strided-reversed))
-       (bli-error-checking-level-set BLIS_FULL_ERROR_CHECKING)
+       (define with-overlap-M (list make-M-z1 make-M-z1 make-M-z00 make-M-overlap make-M-overlap-reversed))
+       (define with-overlap-v (list make-v-z))
+       (define without-overlap-v (list make-v-compact make-v-strided make-v-offset make-v-strided-reversed))
+       (define without-overlap-M (list make-M-c-order make-M-fortran-order make-M-offset
+                                       make-M-strided make-M-strided-both make-M-strided-reversed))
 
-       (with-types (list make-M-c-order make-M-fortran-order make-M-offset
-                         make-M-strided make-M-strided-both make-M-strided-reversed)
-                   (list make-v-compact make-v-strided make-v-offset make-v-strided-reversed)
-                   (list make-v-compact make-v-strided make-v-offset make-v-strided-reversed))))
+       (bli-error-checking-level-set BLIS_FULL_ERROR_CHECKING)
+       (with-types with-overlap-M without-overlap-v without-overlap-v)
+       (with-types without-overlap-M with-overlap-v without-overlap-v)
+       (bli-error-checking-level-set BLIS_FULL_ERROR_CHECKING)
+       (with-types without-overlap-M without-overlap-v without-overlap-v)))
   `((f32 ,sgemv!)
     (f64 ,dgemv!)
     (c32 ,cgemv!)
