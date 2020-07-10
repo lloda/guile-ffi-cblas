@@ -250,7 +250,14 @@ void bli_?gemv( trans_t transa,
                                       rank1_t inc_t
                                       rank0_t rank1_t inc_t)))
              (define (name! transA conjX alpha A X beta Y)
-               "Y := beta * Y + alpha * transA(A) * conjX(X)"
+               #,(format #f "\
+(~a transA conjX alpha A X beta Y)
+
+  Y := beta * Y + alpha * transA(A) * conjX(X)
+
+See also: ~a
+"
+                         (syntax->datum #'name!) (syntax->datum #'name))
                (check-array A 2 type)
                (check-array X 1 type)
                (check-array Y 1 type)
@@ -265,6 +272,18 @@ void bli_?gemv( trans_t transa,
                             (scalar->arg type beta)
                             (pointer-to-first Y) (stride Y 0))))
              (define (name transA conjX alpha A X)
+               #,(format #f "\
+(~a transA conjX alpha A X beta Y)
+
+Return
+
+  alpha * transA(A) * conjX(X)
+
+as a new array.
+
+See also: ~a
+"
+                         (syntax->datum #'name) (syntax->datum #'name!))
                (let ((Y (make-typed-array type *unspecified*
                                           (dim A (if (tr? transA) 1 0)))))
                  (name! transA conjX alpha A X 0 Y)
@@ -296,7 +315,14 @@ void bli_?ger( conj_t  conjx,
                                       rank0_t rank1_t inc_t rank1_t inc_t
                                       rank2_t inc_t inc_t)))
              (define (name! conjX conjY alpha X Y A)
-               "A := A + alpha * conjX(X) * conjY(Y)^T"
+               #,(format #f "\
+(~a conjX conjY alpha X Y A)
+
+  A := A + alpha * conjX(X) * conjY(Y)^T
+
+See also: ~a
+"
+                         (syntax->datum #'name!) (syntax->datum #'name))
                (check-array A 2 type)
                (check-array X 1 type)
                (check-array Y 1 type)
@@ -310,8 +336,19 @@ void bli_?ger( conj_t  conjx,
                             (pointer-to-first Y) (stride Y 0)
                             (pointer-to-first A) (stride A 0) (stride A 1))))
              (define (name conjX conjY alpha X Y)
-               (let ((A (make-typed-array type 0
-                                          (array-length X) (array-length Y))))
+               #,(format #f "\
+(~a conjX conjY alpha X Y)
+
+Return
+
+  alpha * transA(A) * conjX(X)
+
+as a new array.
+
+See also: ~a
+"
+                         (syntax->datum #'name) (syntax->datum #'name!))
+               (let ((A (make-typed-array type 0 (array-length X) (array-length Y))))
                  (name! conjX conjY alpha X Y A)
                  A))))))))
 
@@ -349,7 +386,14 @@ void bli_?gemm( trans_t transa,
                                       rank2_t inc_t inc_t
                                       rank0_t rank2_t inc_t inc_t)))
              (define (name! transA transB alpha A B beta C)
-               "C := beta * C + alpha * transA(A) * transB(B)"
+               #,(format #f "\
+(~a transA transB alpha A B beta C)
+
+  C := beta * C + alpha * transA(A) * transB(B)
+
+See also: ~a
+"
+                         (syntax->datum #'name!) (syntax->datum #'name))
                (check-array A 2 type)
                (check-array B 2 type)
                (check-array C 2 type)
@@ -366,6 +410,18 @@ void bli_?gemm( trans_t transa,
                             (scalar->arg type beta)
                             (pointer-to-first C) (stride C 0) (stride C 1))))
              (define (name transA transB alpha A B)
+               #,(format #f "\
+(~a transA transB alpha A B)
+
+Return
+
+  alpha * transA(A) * transB(B)
+
+as a new array.
+
+See also: ~a
+"
+                         (syntax->datum #'name) (syntax->datum #'name!))
                (let ((C (make-typed-array type *unspecified*
                                           (dim A (if (tr? transA) 1 0))
                                           (dim B (if (tr? transB) 0 1)))))

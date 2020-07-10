@@ -10,7 +10,7 @@ have **BLIS** installed to use the **CBLAS** bindings or viceversa. I am
 packaging them together because they share a fair amount of code.
 
 **CBLAS** (or **BLAS**) is by far the more popular library<sup id="a1">[1](#f1)</sup>,
-and it probably has the fastest implementation on your system. However **BLIS**
+and there are many different implementations. However **BLIS**
 is much more regular and nicer to program for.  These bindings are for the **BLIS**'
 ‘typed’ API.<sup id="a2">[2](#f2)</sup>
 
@@ -37,22 +37,7 @@ extract the required strides from the array arguments. However, since
 **CBLAS** doesn't support arbitrary strides (e.g. it only supports a column
 stride for matrix arguments, assuming column-major order), some array arguments
 will cause the typed binding to fail, or result in extra copies with the
-functional binding.
-
-The situation with **BLIS** is a bit complicated. By default (2020/07) **BLIS**
-will flag overlapping stride combinations in any of the array arguments as
-errors, even when the result is well defined. However, if you disable **BLIS**'
-internal error checking with `(bli-error-checking-level-set
-BLIS_NO_ERROR_CHECKING)` **BLIS** will produce the correct result, as far as
-I've been able to verify. `(ffi blis)` performs independent shape checks on the
-typed and functional bindings, and the array arguments have valid strides by
-construction, so the lack of error checking by **BLIS** itself isn't necessarily
-a problem. The test suite includes tests with a variety of overlapping stride
-combinations for `gemm` and `gemv`. Still, **BLIS** doesn't *officially* support
-these strides. Note that if the *destination* argument has overlapping strides,
-then the result depends on the order in which the operations are carried out and
-is pretty much undefined. `(ffi blis)` will *not* check the destination argument
-for this error.
+functional binding<sup id="a3">[3](#f3)</sup>.
 
 If the function doesn't return an array (e.g. `cdot`) then we only provide
 two bindings (e.g. `cblas_cdot` and `cdot`).
@@ -66,12 +51,7 @@ the bindings available.
 
 Note that this package is a work in progress and that there are bugs. For
 example, negative strides require specific handling for **CBLAS** and are not
-supported yet. **BLIS** doesn't mess up negative strides, so it avoids
-this problem.
-
-<b id="f1">¹</b> See [http://www.netlib.org/blas/](http://www.netlib.org/blas/) or [https://en.wikipedia.org/wiki/Basic_Linear_Algebra_Subprograms](https://en.wikipedia.org/wiki/Basic_Linear_Algebra_Subprograms). [↩](#a1)
-
-<b id="f2">²</b> See [(https://github.com/flame/blis/blob/master/docs/BLISTypedAPI.md)](https://github.com/flame/blis/blob/master/docs/BLISTypedAPI.md). [↩](#a2)
+supported yet. **BLIS** doesn't have this problem.
 
 ### Installation notes
 
@@ -112,11 +92,9 @@ and similarly for `BLIS`.
 
 ### Coverage
 
----
-
 #### CBLAS level 1
 
-* srotg drotg crotg zrotg <sup id="a3">[3](#f3)</sup>
+* srotg drotg crotg zrotg <sup id="a4">[4](#f4)</sup>
 * sscal dscal cscal zscal csscal zdscal
 * sswap dswap cswap zswap
 * scopy dcopy ccopy zcopy
@@ -126,8 +104,6 @@ and similarly for `BLIS`.
 * sasum dasum scasum dzasum
 * isamax idamax icamax izamax
 
-<b id="f3">³</b> Some distributions of `libcblas` do not provide these. `guile-ffi-cblas` will still work, just without these bindings. [↩](#a3)
-
 #### CBLAS level 2
 
 * sgemv dgemv cgemv zgemv
@@ -136,8 +112,6 @@ and similarly for `BLIS`.
 #### CBLAS level 3
 
 * sgemm dgemm cgemm zgemm
-
----
 
 #### BLIS level 1
 
@@ -153,3 +127,26 @@ and similarly for `BLIS`.
 #### BLIS level 3
 
 * sgemm dgemm cgemm zgemm
+
+***
+
+<b id="f1">¹</b> See [http://www.netlib.org/blas/](http://www.netlib.org/blas/) or [https://en.wikipedia.org/wiki/Basic_Linear_Algebra_Subprograms](https://en.wikipedia.org/wiki/Basic_Linear_Algebra_Subprograms). [↩](#a1)
+
+<b id="f2">²</b> See [(https://github.com/flame/blis/blob/master/docs/BLISTypedAPI.md)](https://github.com/flame/blis/blob/master/docs/BLISTypedAPI.md). [↩](#a2)
+
+<b id="f3">³</b> The situation with **BLIS** is a bit complicated. By default (2020/07) **BLIS**
+will flag overlapping stride combinations in any of the array arguments as
+errors, even when the result is well defined. However, if you disable **BLIS**'
+internal error checking with `(bli-error-checking-level-set
+BLIS_NO_ERROR_CHECKING)` **BLIS** will produce the correct result, as far as
+I've been able to verify. `(ffi blis)` performs independent shape checks on the
+typed and functional bindings, and the array arguments have valid strides by
+construction, so the lack of error checking by **BLIS** itself isn't necessarily
+a problem. The test suite includes tests with a variety of overlapping stride
+combinations for `gemm` and `gemv`. Still, **BLIS** doesn't *officially* support
+these strides. Note that if the *destination* argument has overlapping strides,
+then the result depends on the order in which the operations are carried out and
+is pretty much undefined. `(ffi blis)` will *not* check the destination argument
+for this error. [↩](#a3)
+
+<b id="f4">⁴</b> Some distributions of `libcblas` do not provide these. `guile-ffi-cblas` will still work, just without these bindings. [↩](#a4)
