@@ -11,6 +11,7 @@
 (include "common.scm")
 
 (set! test-log-to-file #f)
+(test-begin "ffi-cblas")
 
 ; ---------------------------------
 ; Test types
@@ -322,4 +323,6 @@
     (c32 ,cgemm!)
     (c64 ,zgemm!)))
 
-(exit (test-runner-fail-count (test-runner-current)))
+(define error-count (test-runner-fail-count (test-runner-current)))
+(test-end "ffi-cblas")
+(exit error-count)

@@ -136,7 +136,7 @@ and similarly for `BLIS`.
 
 <b id="f3">³</b> The situation with **BLIS** is a bit complicated. By default (2020/07) **BLIS**
 will flag overlapping stride combinations in any of the array arguments as
-errors, even when the result is well defined. However, if you disable **BLIS**'
+errors, even when the result is well defined (some discussion on the topic [here](https://groups.google.com/forum/#!topic/blis-discuss/ANM7i1ZpuwU)). However, if you disable **BLIS**'
 internal error checking with `(bli-error-checking-level-set
 BLIS_NO_ERROR_CHECKING)` **BLIS** will produce the correct result, as far as
 I've been able to verify. `(ffi blis)` performs independent shape checks on the

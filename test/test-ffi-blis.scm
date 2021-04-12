@@ -11,6 +11,7 @@
 (include "common.scm")
 
 (set! test-log-to-file #f)
+(test-begin "ffi-blis")
 
 (define (apply-transpose-flag A flag)
   (cond ((or (equal? flag BLIS_NO_TRANSPOSE) (equal? flag BLIS_NO_CONJUGATE)) A)
@@ -316,4 +317,6 @@
     (c32 ,cger!)
     (c64 ,zger!)))
 
-(exit (test-runner-fail-count (test-runner-current)))
+(define error-count (test-runner-fail-count (test-runner-current)))
+(test-end "ffi-blis")
+(exit error-count)
