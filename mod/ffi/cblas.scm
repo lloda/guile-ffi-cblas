@@ -59,7 +59,7 @@
 (define (scalar->arg srfi4-type a)
   (case srfi4-type
     ((f32 f64) a)
-    ((c32 c64) (pointer-to-first (make-typed-array srfi4-type a)))
+    ((c32 c64) (bytevector->pointer (make-typed-array srfi4-type a 1) 0))
     (else (throw 'bad-array-type srfi4-type))))
 
 
