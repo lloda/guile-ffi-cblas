@@ -1,13 +1,15 @@
 
-; Common functions for CBLAS & BLIS bindings.
-; (c) Daniel Llorens - 2014-2015, 2017, 2019
+; Helper functions for CBLAS bindings.
+; (c) Daniel Llorens - 2014-2015, 2017, 2019, 2021
 
 ; This library is free software; you can redistribute it and/or modify it under
 ; the terms of the GNU Lesser General Public License as published by the Free
 ; Software Foundation; either version 3 of the License, or (at your option) any
 ; later version.
 
-(define-module (ffi blis arrays)
+; This file is shared with (ffi blis arrays) in guile-ffi-cblis.
+
+(define-module (ffi cblas arrays)
   #:export (syntax->list
             srfi4-type-size
             check-array check-2-arrays

@@ -1,5 +1,5 @@
 
-; Used by tests for (ffi blis).
+; Test helpers.
 ; (c) Daniel Llorens - 2014, 2020
 
 ; This library is free software; you can redistribute it and/or modify it under

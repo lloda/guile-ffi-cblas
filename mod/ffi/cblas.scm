@@ -12,7 +12,7 @@
 ;;; Code:
 
 (define-module (ffi cblas))
-(import (system foreign) (srfi srfi-1) (srfi srfi-11) (ffi blis arrays)
+(import (system foreign) (srfi srfi-1) (srfi srfi-11) (ffi cblas arrays)
           (ice-9 match))
 
 ; TODO As an alternative go through installation.
