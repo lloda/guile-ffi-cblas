@@ -264,7 +264,7 @@ LEVEL 3
                    (values (array-ref c) (array-ref s)))))
            #'(if #f #f)))))))
 
-(define-sdcz rotg cblas_?rotg ?rotg)
+(define-sdcz rotg cblas_?rotg cblas-?rotg)
 
 
 ; -----------------------------
@@ -289,8 +289,8 @@ LEVEL 3
                            (pointer-to-first A) (stride A 0)
                            (pointer-to-first B) (stride B 0)))))))))
 
-(define-dot-real 'f32 sdot cblas_sdot)
-(define-dot-real 'f64 ddot cblas_ddot)
+(define-dot-real 'f32 cblas-sdot cblas_sdot)
+(define-dot-real 'f64 cblas-ddot cblas_ddot)
 
 (export cblas_sdot cblas_ddot sdot ddot)
 
@@ -313,12 +313,12 @@ LEVEL 3
                              (pointer-to-first C))
                  (array-ref C)))))))))
 
-(define-dot-complex 'c32 cblas_cdotu_sub cdotu)
-(define-dot-complex 'c32 cblas_cdotc_sub cdotc)
-(define-dot-complex 'c64 cblas_zdotu_sub zdotu)
-(define-dot-complex 'c64 cblas_zdotc_sub zdotc)
+(define-dot-complex 'c32 cblas_cdotu_sub cblas-cdotu)
+(define-dot-complex 'c32 cblas_cdotc_sub cblas-cdotc)
+(define-dot-complex 'c64 cblas_zdotu_sub cblas-zdotu)
+(define-dot-complex 'c64 cblas_zdotc_sub cblas-zdotc)
 
-(export cdotu cdotc zdotu zdotc
+(export cblas-cdotu cblas-cdotc cblas-zdotu cblas-zdotc
         cblas_cdotu_sub cblas_cdotc_sub cblas_zdotu_sub cblas_zdotc_sub)
 
 
@@ -345,7 +345,7 @@ LEVEL 3
                            (pointer-to-first X) (stride X 0)
                            (pointer-to-first Y) (stride Y 0)))))))))
 
-(define-sdcz copy cblas_?copy ?copy!)
+(define-sdcz copy cblas_?copy cblas-?copy!)
 
 
 ; -----------------------------
@@ -371,7 +371,7 @@ LEVEL 3
                            (pointer-to-first X) (stride X 0)
                            (pointer-to-first Y) (stride Y 0)))))))))
 
-(define-sdcz swap cblas_?swap ?swap!)
+(define-sdcz swap cblas_?swap cblas-?swap!)
 
 
 ; -----------------------------
@@ -397,7 +397,7 @@ LEVEL 3
                            (pointer-to-first X) (stride X 0)
                            (pointer-to-first Y) (stride Y 0)))))))))
 
-(define-sdcz axpy cblas_?axpy ?axpy!)
+(define-sdcz axpy cblas_?axpy cblas-?axpy!)
 
 
 ; -----------------------------
@@ -424,7 +424,7 @@ LEVEL 3
       ((_ ctype cblas-name name)
        #'(define-scal ctype ctype cblas-name name)))))
 
-(define-sdcz scal cblas_?scal ?scal!)
+(define-sdcz scal cblas_?scal cblas-?scal!)
 
 (define-scal c32 f32 cblas_csscal csscal!)
 (define-scal c64 f64 cblas_zdscal zdscal!)
@@ -491,7 +491,7 @@ LEVEL 3
                (check-array X 1 type)
                (cblas-name (array-length X) (pointer-to-first X) (stride X 0)))))))))
 
-(define-sdcz iamax cblas_i?amax i?amax)
+(define-sdcz iamax cblas_i?amax cblas-i?amax)
 
 
 ; -----------------------------
@@ -577,7 +577,7 @@ LEVEL 3
                                (pointer-to-first X) (stride X 0) (scalar->arg type beta)
                                (pointer-to-first Y) (stride Y 0)))))))))))
 
-(define-sdcz gemv cblas_?gemv ?gemv!)
+(define-sdcz gemv cblas_?gemv cblas-?gemv!)
 
 
 ; -----------------------------
@@ -624,4 +624,4 @@ LEVEL 3
                                  (scalar->arg type beta)
                                  (pointer-to-first C) C-lead)))))))))))
 
-(define-sdcz gemm cblas_?gemm ?gemm!)
+(define-sdcz gemm cblas_?gemm cblas-?gemm!)

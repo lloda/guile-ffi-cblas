@@ -37,10 +37,10 @@
                   (receive (c s) (rotg a b)
                     (test-approximate cref c eps)
                     (test-approximate sref s eps))))
-            `((,srotg 1e-7)
-              (,crotg 1e-7)
-              (,drotg 1e-15)
-              (,zrotg 1e-15)))))
+            `((,cblas-srotg 1e-7)
+              (,cblas-crotg 1e-7)
+              (,cblas-drotg 1e-15)
+              (,cblas-zrotg 1e-15)))))
     `((1. 0. 1. 0.)
       (0. 1. 0. 1.)
       (1. 1. ,(sqrt .5) ,(sqrt .5))
@@ -77,10 +77,10 @@
             (lambda (make-X)
               (test-iamax srfi4-type iamax make-X))
           (list make-v-compact make-v-offset make-v-strided))))
-  `((f64 ,idamax)
-    (f32 ,isamax)
-    (c64 ,izamax)
-    (c32 ,icamax)))
+  `((f64 ,cblas-idamax)
+    (f32 ,cblas-isamax)
+    (c64 ,cblas-izamax)
+    (c32 ,cblas-icamax)))
 
 
 ; ---------------------------------
@@ -114,10 +114,10 @@
             (test-axpy srfi4-type axpy! make-X make-Y))
           (list make-v-compact make-v-offset make-v-strided)))
        (list make-v-compact make-v-offset make-v-strided))))
- `((f64 ,daxpy!)
-   (f32 ,saxpy!)
-   (c64 ,zaxpy!)
-   (c32 ,caxpy!)))
+ `((f64 ,cblas-daxpy!)
+   (f32 ,cblas-saxpy!)
+   (c64 ,cblas-zaxpy!)
+   (c32 ,cblas-caxpy!)))
 
 
 ; ---------------------------------
@@ -147,10 +147,10 @@
             (test-copy srfi4-type copy! make-X make-Y))
           (list make-v-compact make-v-offset make-v-strided)))
        (list make-v-compact make-v-offset make-v-strided))))
- `((f64 ,dcopy!)
-   (f32 ,scopy!)
-   (c64 ,zcopy!)
-   (c32 ,ccopy!)))
+ `((f64 ,cblas-dcopy!)
+   (f32 ,cblas-scopy!)
+   (c64 ,cblas-zcopy!)
+   (c32 ,cblas-ccopy!)))
 
 
 ; ---------------------------------
@@ -180,10 +180,10 @@
             (test-swap srfi4-type swap! make-X make-Y))
           (list make-v-compact make-v-offset make-v-strided)))
        (list make-v-compact make-v-offset make-v-strided))))
- `((f64 ,dswap!)
-   (f32 ,sswap!)
-   (c64 ,zswap!)
-   (c32 ,cswap!)))
+ `((f64 ,cblas-dswap!)
+   (f32 ,cblas-sswap!)
+   (c64 ,cblas-zswap!)
+   (c32 ,cblas-cswap!)))
 
 
 ; ---------------------------------
@@ -227,10 +227,10 @@
        (list make-M-c-order make-M-fortran-order make-M-offset make-M-strided)
        (list make-v-compact make-v-offset make-v-strided)
        (list make-v-compact make-v-offset make-v-strided)))))
- `((f64 ,dgemv!)
-   (f32 ,sgemv!)
-   (c64 ,zgemv!)
-   (c32 ,cgemv!)))
+ `((f64 ,cblas-dgemv!)
+   (f32 ,cblas-sgemv!)
+   (c64 ,cblas-zgemv!)
+   (c32 ,cblas-cgemv!)))
 
 
 ; ---------------------------------
@@ -300,9 +300,9 @@
        (let ((A (fill-A2! (transpose-array (make-typed-array 'f64 *unspecified* 4 3) 1 0)))
              (B (fill-A2! (transpose-array (make-typed-array 'f64 *unspecified* 3 5) 1 0)))
              (C (fill-A2! (transpose-array (make-typed-array 'f64 *unspecified* 4 5) 1 0))))
-         (test-gemm "gemm-4" dgemm! 1. A CblasTrans B CblasTrans 1. (transpose-array C 1 0))
-         (test-gemm "gemm-5" dgemm! 1. A CblasNoTrans C CblasTrans 1. (transpose-array B 1 0))
-         (test-gemm "gemm-6" dgemm! 1. C CblasTrans B CblasNoTrans 1. (transpose-array A 1 0)))
+         (test-gemm "gemm-4" cblas-dgemm! 1. A CblasTrans B CblasTrans 1. (transpose-array C 1 0))
+         (test-gemm "gemm-5" cblas-dgemm! 1. A CblasNoTrans C CblasTrans 1. (transpose-array B 1 0))
+         (test-gemm "gemm-6" cblas-dgemm! 1. C CblasTrans B CblasNoTrans 1. (transpose-array A 1 0)))
        (for-each
            (match-lambda ((make-A make-B make-C transA transB)
                           (test-gemm (format #f "gemm:~a:~a:~a:~a:~a:~a" srfi4-type (procedure-name make-A)
@@ -318,10 +318,10 @@
 ; TODO Conj, etc. for c32/c64.
           (list CblasTrans CblasNoTrans)
           (list CblasTrans CblasNoTrans)))))
-  `((f32 ,sgemm!)
-    (f64 ,dgemm!)
-    (c32 ,cgemm!)
-    (c64 ,zgemm!)))
+  `((f32 ,cblas-sgemm!)
+    (f64 ,cblas-dgemm!)
+    (c32 ,cblas-cgemm!)
+    (c64 ,cblas-zgemm!)))
 
 (define error-count (test-runner-fail-count (test-runner-current)))
 (test-end "ffi-cblas")
