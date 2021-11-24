@@ -63,19 +63,19 @@
          a
          (iota (length a)))))
 
-(define (test-iamax srfi4-type iamax make-A)
+(define (test-iamax stype iamax make-A)
   (let* ((tag (format #f "~a" (procedure-name make-A)))
          (case-name (format #f "~a, ~a" (procedure-name iamax) tag))
-         (A (fill-A1! (make-A srfi4-type))))
+         (A (fill-A1! (make-A stype))))
     (test-begin case-name)
     (test-equal (iamax A) (list-iamax (array->list A)))
     (test-end case-name)))
 
 (map (match-lambda
-       ((srfi4-type iamax)
+       ((stype iamax)
         (for-each
             (lambda (make-X)
-              (test-iamax srfi4-type iamax make-X))
+              (test-iamax stype iamax make-X))
           (list make-v-compact make-v-offset make-v-strided))))
   `((f64 ,cblas-idamax)
     (f32 ,cblas-isamax)
@@ -87,31 +87,31 @@
 ; saxpy daxpy caxpy zaxpy
 ; ---------------------------------
 
-(define (test-axpy srfi4-type axpy! make-A make-B)
+(define (test-axpy stype axpy! make-A make-B)
   (let* ((tag (format #f "~a:~a" (procedure-name make-A) (procedure-name make-B)))
          (case-name (format #f "~a, ~a" (procedure-name axpy!) tag))
-         (A (fill-A1! (make-A srfi4-type)))
-         (B (fill-B1! (make-B srfi4-type))))
+         (A (fill-A1! (make-A stype)))
+         (B (fill-B1! (make-B stype))))
     (let ((Alist (array->list A))
           (Blist (array->list B)))
       (test-begin case-name)
       (axpy! 3 A B)
-      (test-equal B (list->typed-array srfi4-type 1 (map (lambda (a b) (+ (* 3 a) b)) Alist Blist)))
-      (test-equal A (list->typed-array srfi4-type 1 Alist))
+      (test-equal B (list->typed-array stype 1 (map (lambda (a b) (+ (* 3 a) b)) Alist Blist)))
+      (test-equal A (list->typed-array stype 1 Alist))
       (axpy! 1.9 A B)
       (test-approximate-array "approximate array"
-       B (list->typed-array srfi4-type 1 (map (lambda (a b) (+ (* a (+ 3 1.9)) b)) Alist Blist)) 1e-14)
-      (test-equal A (list->typed-array srfi4-type 1 Alist))
+       B (list->typed-array stype 1 (map (lambda (a b) (+ (* a (+ 3 1.9)) b)) Alist Blist)) 1e-14)
+      (test-equal A (list->typed-array stype 1 Alist))
       (test-end case-name))))
 
 (map
  (match-lambda
-     ((srfi4-type axpy!)
+     ((stype axpy!)
       (for-each
        (lambda (make-X)
          (for-each
           (lambda (make-Y)
-            (test-axpy srfi4-type axpy! make-X make-Y))
+            (test-axpy stype axpy! make-X make-Y))
           (list make-v-compact make-v-offset make-v-strided)))
        (list make-v-compact make-v-offset make-v-strided))))
  `((f64 ,cblas-daxpy!)
@@ -124,27 +124,27 @@
 ; scopy dcopy ccopy zcopy
 ; ---------------------------------
 
-(define (test-copy srfi4-type copy! make-A make-B)
+(define (test-copy stype copy! make-A make-B)
   (let* ((tag (format #f "~a:~a" (procedure-name make-A) (procedure-name make-B)))
          (case-name (format #f "~a, ~a" (procedure-name copy!) tag))
-         (A (fill-A1! (make-A srfi4-type)))
-         (B (fill-B1! (make-B srfi4-type))))
+         (A (fill-A1! (make-A stype)))
+         (B (fill-B1! (make-B stype))))
     (let ((Alist (array->list A))
           (Blist (array->list B)))
       (test-begin case-name)
       (copy! A B)
-      (test-equal B (list->typed-array srfi4-type 1 Alist))
-      (test-equal A (list->typed-array srfi4-type 1 Alist))
+      (test-equal B (list->typed-array stype 1 Alist))
+      (test-equal A (list->typed-array stype 1 Alist))
       (test-end case-name))))
 
 (map
  (match-lambda
-     ((srfi4-type copy!)
+     ((stype copy!)
       (for-each
        (lambda (make-X)
          (for-each
           (lambda (make-Y)
-            (test-copy srfi4-type copy! make-X make-Y))
+            (test-copy stype copy! make-X make-Y))
           (list make-v-compact make-v-offset make-v-strided)))
        (list make-v-compact make-v-offset make-v-strided))))
  `((f64 ,cblas-dcopy!)
@@ -157,27 +157,27 @@
 ; scopy dcopy ccopy zcopy
 ; ---------------------------------
 
-(define (test-swap srfi4-type swap! make-A make-B)
+(define (test-swap stype swap! make-A make-B)
   (let* ((tag (format #f "~a:~a" (procedure-name make-A) (procedure-name make-B)))
          (case-name (format #f "~a, ~a" (procedure-name swap!) tag))
-         (A (fill-A1! (make-A srfi4-type)))
-         (B (fill-B1! (make-B srfi4-type))))
+         (A (fill-A1! (make-A stype)))
+         (B (fill-B1! (make-B stype))))
     (let ((Alist (array->list A))
           (Blist (array->list B)))
       (test-begin case-name)
       (swap! A B)
-      (test-equal B (list->typed-array srfi4-type 1 Alist))
-      (test-equal A (list->typed-array srfi4-type 1 Blist))
+      (test-equal B (list->typed-array stype 1 Alist))
+      (test-equal A (list->typed-array stype 1 Blist))
       (test-end case-name))))
 
 (map
  (match-lambda
-     ((srfi4-type swap!)
+     ((stype swap!)
       (for-each
        (lambda (make-X)
          (for-each
           (lambda (make-Y)
-            (test-swap srfi4-type swap! make-X make-Y))
+            (test-swap stype swap! make-X make-Y))
           (list make-v-compact make-v-offset make-v-strided)))
        (list make-v-compact make-v-offset make-v-strided))))
  `((f64 ,cblas-dswap!)
@@ -199,12 +199,12 @@
          (array-set! Y (+ (array-ref Y i) (* alpha (array-ref A i j) (array-ref X j))) i)))
      Y)))
 
-(define (test-gemv srfi4-type gemv! make-A make-X make-Y)
+(define (test-gemv stype gemv! make-A make-X make-Y)
   (let* ((tag (format #f "~a:~a:~a" (procedure-name make-A) (procedure-name make-X) (procedure-name make-Y)))
          (case-name (format #f "~a, ~a" (procedure-name gemv!) tag))
-         (A (fill-A2! (make-A srfi4-type)))
-         (X (fill-A1! (make-X srfi4-type)))
-         (Y (fill-B1! (make-Y srfi4-type))))
+         (A (fill-A2! (make-A stype)))
+         (X (fill-A1! (make-X stype)))
+         (Y (fill-B1! (make-Y stype))))
     (let ((A1 (array-copy A))
           (X1 (array-copy X)))
       (test-begin case-name)
@@ -219,10 +219,10 @@
 
 (for-each
  (match-lambda
-   ((srfi4-type gemv!)
+   ((stype gemv!)
     (for-each
         (match-lambda ((make-A make-X make-Y)
-                       (test-gemv srfi4-type gemv! make-A make-X make-Y)))
+                       (test-gemv stype gemv! make-A make-X make-Y)))
       (list-product
        (list make-M-c-order make-M-fortran-order make-M-offset make-M-strided)
        (list make-v-compact make-v-offset make-v-strided)
@@ -289,11 +289,11 @@
 
 (for-each
     (match-lambda
-      ((srfi4-type gemm!)
+      ((stype gemm!)
 ; some extra tests with non-square matrices.
-       (let ((A (fill-A2! (make-typed-array srfi4-type *unspecified* 4 3)))
-             (B (fill-A2! (make-typed-array srfi4-type *unspecified* 3 5)))
-             (C (fill-A2! (make-typed-array srfi4-type *unspecified* 4 5))))
+       (let ((A (fill-A2! (make-typed-array stype *unspecified* 4 3)))
+             (B (fill-A2! (make-typed-array stype *unspecified* 3 5)))
+             (C (fill-A2! (make-typed-array stype *unspecified* 4 5))))
          (test-gemm "gemm-1" gemm! 1. A CblasNoTrans B CblasNoTrans 1. C)
          (test-gemm "gemm-2" gemm! 1. A CblasTrans C CblasNoTrans 1. B)
          (test-gemm "gemm-3" gemm! 1. C CblasNoTrans B CblasTrans 1. A))
@@ -305,12 +305,12 @@
          (test-gemm "gemm-6" cblas-dgemm! 1. C CblasTrans B CblasNoTrans 1. (transpose-array A 1 0)))
        (for-each
            (match-lambda ((make-A make-B make-C transA transB)
-                          (test-gemm (format #f "gemm:~a:~a:~a:~a:~a:~a" srfi4-type (procedure-name make-A)
+                          (test-gemm (format #f "gemm:~a:~a:~a:~a:~a:~a" stype (procedure-name make-A)
                                              (procedure-name make-B) (procedure-name make-C)
                                              transA transB)
-                                     gemm! 3. (fill-A2! (make-A srfi4-type)) transA
-                                     (fill-A2! (make-B srfi4-type)) transB
-                                     2. (fill-A2! (make-C srfi4-type)))))
+                                     gemm! 3. (fill-A2! (make-A stype)) transA
+                                     (fill-A2! (make-B stype)) transB
+                                     2. (fill-A2! (make-C stype)))))
          (list-product
           (list make-M-c-order make-M-fortran-order make-M-offset make-M-strided)
           (list make-M-c-order make-M-fortran-order make-M-offset make-M-strided)
