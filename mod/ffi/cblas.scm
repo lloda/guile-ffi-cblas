@@ -12,8 +12,8 @@
 ;;; Code:
 
 (define-module (ffi cblas))
-(import (system foreign) (srfi srfi-1) (srfi srfi-11) (ffi cblas arrays)
-          (ice-9 match))
+(import (system foreign) (srfi 1) (srfi 11) (srfi srfi-4 gnu)
+        (ffi cblas arrays) (ice-9 match))
 
 ; TODO As an alternative go through installation.
 (eval-when (compile load eval)
@@ -53,8 +53,8 @@
 
 ; BUG CBLAS expects different when the inc is negative (expects pointer to size*inc element, so first in memory; not to the logically first element).
 (define (pointer-to-first A)
-  (bytevector->pointer (shared-array-root A)
-                       (* (shared-array-offset A) (srfi-4-type-size (array-type A)))))
+  (let ((root (shared-array-root A)))
+    (bytevector->pointer root (* (shared-array-offset A) (srfi-4-vector-type-size root)))))
 
 (define (scalar->arg stype a)
   (case stype
