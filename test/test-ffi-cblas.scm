@@ -10,18 +10,21 @@
 (import (ffi cblas) (srfi srfi-64) (srfi srfi-1) (ice-9 match) (srfi srfi-8))
 (include "common.scm")
 
-(set! test-log-to-file #f)
 (test-begin "ffi-cblas")
 
 ; ---------------------------------
 ; Test types
 ; ---------------------------------
 
-(define* (test-approximate-array tag test expected err)
-  (test-begin tag)
-  (array-for-each (lambda (test expected) (test-approximate test expected err))
-                  test expected)
-  (test-end tag))
+(define* (test-approximate-array tag expected val err)
+  (let ((tag (if (symbol? tag) (symbol->string tag) tag)))
+    (test-begin tag)
+    (array-for-each (lambda (expected val)
+                      (if (and (real? expected) (real? val))
+                        (test-approximate expected val err)
+                        (test-approximate 0. (magnitude (- expected val)) err)))
+                    expected val)
+    (test-end tag)))
 
 
 ; -----------------------------
@@ -262,20 +265,21 @@
 ; sgemm dgemm cgemm zgemm
 ; ---------------------------------
 
-; alpha * sum_k(A_{ik}*B_{kj}) + beta * C_{ij} -> C_{ij}
-(define (ref-gemm! alpha A transA B transB beta C)
-  (let* ((A (if ((@@ (ffi cblas) tr?) transA) (transpose-array A 1 0) A))
-         (B (if ((@@ (ffi cblas) tr?) transB) (transpose-array B 1 0) B))
-         (M (first (array-dimensions C)))
-         (N (second (array-dimensions C)))
-         (K (first (array-dimensions B))))
-     (do ((i 0 (+ i 1))) ((= i M))
-       (do ((j 0 (+ j 1))) ((= j N))
-         (array-set! C (* beta (array-ref C i j)) i j)
-         (do ((k 0 (+ k 1))) ((= k K))
-           (array-set! C (+ (array-ref C i j) (* alpha (array-ref A i k) (array-ref B k j))) i j))))))
-
 (define (test-gemm tag gemm! alpha A transA B transB beta C)
+
+  ;; alpha * sum_k(A_{ik}*B_{kj}) + beta * C_{ij} -> C_{ij}
+  (define (ref-gemm! alpha A transA B transB beta C)
+    (let* ((A (if ((@@ (ffi cblas) tr?) transA) (transpose-array A 1 0) A))
+           (B (if ((@@ (ffi cblas) tr?) transB) (transpose-array B 1 0) B))
+           (M (first (array-dimensions C)))
+           (N (second (array-dimensions C)))
+           (K (first (array-dimensions B))))
+      (do ((i 0 (+ i 1))) ((= i M))
+        (do ((j 0 (+ j 1))) ((= j N))
+          (array-set! C (* beta (array-ref C i j)) i j)
+          (do ((k 0 (+ k 1))) ((= k K))
+            (array-set! C (+ (array-ref C i j) (* alpha (array-ref A i k) (array-ref B k j))) i j))))))
+
   (let ((C1 (array-copy C))
         (C2 (array-copy C))
         (AA (array-copy A))
